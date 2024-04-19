@@ -116,7 +116,9 @@ void EditorDirDialog::reload(const String &p_path) {
 void EditorDirDialog::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
-			FileSystemDock::get_singleton()->connect("folder_color_changed", callable_mp(this, &EditorDirDialog::reload).bind(""));
+			if (!FileSystemDock::get_singleton()->is_connected("folder_color_changed", callable_mp(this, &EditorDirDialog::reload).bind(""))) {
+				FileSystemDock::get_singleton()->connect("folder_color_changed", callable_mp(this, &EditorDirDialog::reload).bind(""));
+			}
 
 			EditorFileSystem::get_singleton()->connect("filesystem_changed", callable_mp(this, &EditorDirDialog::reload).bind(""));
 			reload();
