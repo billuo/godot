@@ -981,14 +981,15 @@ if env["vsproj"]:
 # not everybody might have yet, so we have to check.
 from SCons import __version__ as scons_raw_version
 
-scons_ver = env._get_major_minor_revision(scons_raw_version)
-if env["compiledb"] and scons_ver < (4, 0, 0):
-    # Generating the compilation DB (`compile_commands.json`) requires SCons 4.0.0 or later.
-    print("The `compiledb=yes` option requires SCons 4.0 or later, but your version is %s." % scons_raw_version)
-    Exit(255)
-if scons_ver >= (4, 0, 0):
-    env.Tool("compilation_db")
-    env.Alias("compiledb", env.CompilationDatabase())
+if env["compiledb"]:
+    scons_ver = env._get_major_minor_revision(scons_raw_version)
+    if scons_ver < (4, 0, 0):
+        # Generating the compilation DB (`compile_commands.json`) requires SCons 4.0.0 or later.
+        print("The `compiledb=yes` option requires SCons 4.0 or later, but your version is %s." % scons_raw_version)
+        Exit(255)
+    else:
+        env.Tool("compilation_db")
+        env.Alias("compiledb", env.CompilationDatabase())
 
 if env["ninja"]:
     if scons_ver < (4, 2, 0):
