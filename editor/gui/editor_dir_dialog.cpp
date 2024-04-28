@@ -122,20 +122,11 @@ void EditorDirDialog::_notification(int p_what) {
 
 			EditorFileSystem::get_singleton()->connect("filesystem_changed", callable_mp(this, &EditorDirDialog::reload).bind(""));
 			reload();
-
-			if (!tree->is_connected("item_collapsed", callable_mp(this, &EditorDirDialog::_item_collapsed))) {
-				tree->connect("item_collapsed", callable_mp(this, &EditorDirDialog::_item_collapsed), CONNECT_DEFERRED);
-			}
-
-			if (!EditorFileSystem::get_singleton()->is_connected("filesystem_changed", callable_mp(this, &EditorDirDialog::reload))) {
-				EditorFileSystem::get_singleton()->connect("filesystem_changed", callable_mp(this, &EditorDirDialog::reload).bind(""));
-			}
 		} break;
 
 		case NOTIFICATION_EXIT_TREE: {
-			if (EditorFileSystem::get_singleton()->is_connected("filesystem_changed", callable_mp(this, &EditorDirDialog::reload))) {
-				EditorFileSystem::get_singleton()->disconnect("filesystem_changed", callable_mp(this, &EditorDirDialog::reload));
-			}
+			EditorFileSystem::get_singleton()->disconnect("filesystem_changed", callable_mp(this, &EditorDirDialog::reload));
+			FileSystemDock::get_singleton()->disconnect("folder_color_changed", callable_mp(this, &EditorDirDialog::reload));
 		} break;
 
 		case NOTIFICATION_VISIBILITY_CHANGED: {
@@ -231,6 +222,7 @@ EditorDirDialog::EditorDirDialog() {
 	vb->add_child(tree);
 	tree->set_v_size_flags(Control::SIZE_EXPAND_FILL);
 	tree->connect("item_activated", callable_mp(this, &EditorDirDialog::_item_activated));
+	tree->connect("item_collapsed", callable_mp(this, &EditorDirDialog::_item_collapsed), CONNECT_DEFERRED);
 
 	set_ok_button_text(TTR("Move"));
 

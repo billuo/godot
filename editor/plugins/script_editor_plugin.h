@@ -374,7 +374,7 @@ class ScriptEditor : public PanelContainer {
 	void _close_tab(int p_idx, bool p_save = true, bool p_history_back = true);
 	void _update_find_replace_bar();
 
-	void _close_current_tab(bool p_save = true);
+	void _close_current_tab(bool p_save = true, bool p_history_back = true);
 	void _close_discard_current_tab(const String &p_str);
 	void _close_docs_tab();
 	void _close_other_tabs();
@@ -472,12 +472,14 @@ class ScriptEditor : public PanelContainer {
 	void _history_back();
 
 	bool waiting_update_names;
+	bool lock_history = false;
 
 	void _help_class_open(const String &p_class);
 	void _help_class_goto(const String &p_desc);
 	bool _help_tab_goto(const String &p_name, const String &p_desc);
 	void _update_history_arrows();
 	void _save_history();
+	void _save_previous_state(Dictionary p_state);
 	void _go_to_tab(int p_idx);
 	void _update_history_pos(int p_new_pos);
 	void _update_script_colors();

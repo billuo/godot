@@ -752,16 +752,15 @@ void TextEdit::_notification(int p_what) {
 				// Draw the minimap.
 
 				// Add visual feedback when dragging or hovering the visible area rectangle.
-				float viewport_alpha;
+				Color viewport_color = theme_cache.caret_color;
 				if (dragging_minimap) {
-					viewport_alpha = 0.25;
+					viewport_color.a = 0.25;
 				} else if (hovering_minimap) {
-					viewport_alpha = 0.175;
+					viewport_color.a = 0.175;
 				} else {
-					viewport_alpha = 0.1;
+					viewport_color.a = 0.1;
 				}
 
-				const Color viewport_color = (theme_cache.background_color.get_v() < 0.5) ? Color(1, 1, 1, viewport_alpha) : Color(0, 0, 0, viewport_alpha);
 				if (rtl) {
 					RenderingServer::get_singleton()->canvas_item_add_rect(ci, Rect2(size.width - (xmargin_end + 2) - minimap_width, viewport_offset_y, minimap_width, viewport_height), viewport_color);
 				} else {
@@ -1187,7 +1186,7 @@ void TextEdit::_notification(int p_what) {
 					}
 
 					if (!clipped && lookup_symbol_word.length() != 0) { // Highlight word
-						if (is_ascii_char(lookup_symbol_word[0]) || lookup_symbol_word[0] == '_' || lookup_symbol_word[0] == '.') {
+						if (is_ascii_alphabet_char(lookup_symbol_word[0]) || lookup_symbol_word[0] == '_' || lookup_symbol_word[0] == '.') {
 							int lookup_symbol_word_col = _get_column_pos_of_word(lookup_symbol_word, str, SEARCH_MATCH_CASE | SEARCH_WHOLE_WORDS, 0);
 							int lookup_symbol_word_len = lookup_symbol_word.length();
 							while (lookup_symbol_word_col != -1) {
@@ -7492,7 +7491,7 @@ void TextEdit::_update_scrollbars() {
 
 	updating_scrolls = true;
 
-	if (total_rows > visible_rows) {
+	if (!fit_content_height && total_rows > visible_rows) {
 		v_scroll->show();
 		v_scroll->set_max(total_rows + _get_visible_lines_offset());
 		v_scroll->set_page(visible_rows + _get_visible_lines_offset());

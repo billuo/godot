@@ -20,3 +20,6 @@ thirdparty/* linguist-vendored
 *.png binary
 *.ttf binary
 *.tza binary
+
+SConstruct merge=ours
+
