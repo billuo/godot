@@ -1,7 +1,7 @@
+# TODO: convert to Python
 $ErrorActionPreference = "Stop"
 
-# [string[]] $CommonArgs = "use_llvm=yes", "CC=clang", "CXX=clang++", "-j 28"
-[string[]] $CommonArgs = "-j 28", "compiledb=no"
+[string[]] $CommonArgs = "-j 28", "compiledb=no", "debug_symbols=yes", "separate_debug_symbols=yes"
 
 # For web, aim to minimize binary size above everything else.
 [string[]] $WebTemplateArgs = "optimize=size", "debug_symbols=no", "thread=yes"
