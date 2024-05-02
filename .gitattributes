@@ -21,5 +21,5 @@ thirdparty/* linguist-vendored
 *.ttf binary
 *.tza binary
 
-SConstruct merge=ours
+# SConstruct merge=ours
 
