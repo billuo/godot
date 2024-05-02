@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  editor_plugin_settings.h                                              */
+/*  canvas_item.compat.inc                                                */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,51 +28,14 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#ifndef EDITOR_PLUGIN_SETTINGS_H
-#define EDITOR_PLUGIN_SETTINGS_H
+#ifndef DISABLE_DEPRECATED
 
-#include "editor/editor_data.h"
-#include "editor/plugin_config_dialog.h"
+void CanvasItem::_draw_circle_compat_84472(const Point2 &p_pos, real_t p_radius, const Color &p_color) {
+	draw_circle(p_pos, p_radius, p_color, true, -1.0, false);
+}
 
-class Tree;
+void CanvasItem::_bind_compatibility_methods() {
+	ClassDB::bind_compatibility_method(D_METHOD("draw_circle", "position", "radius", "color"), &CanvasItem::_draw_circle_compat_84472);
+}
 
-class EditorPluginSettings : public VBoxContainer {
-	GDCLASS(EditorPluginSettings, VBoxContainer);
-
-	enum {
-		BUTTON_PLUGIN_EDIT
-	};
-
-	enum {
-		COLUMN_PADDING_LEFT,
-		COLUMN_STATUS,
-		COLUMN_NAME,
-		COLUMN_VERSION,
-		COLUMN_AUTHOR,
-		COLUMN_EDIT,
-		COLUMN_PADDING_RIGHT,
-		COLUMN_MAX,
-	};
-
-	PluginConfigDialog *plugin_config_dialog = nullptr;
-	Tree *plugin_list = nullptr;
-	bool updating = false;
-
-	void _plugin_activity_changed();
-	void _create_clicked();
-	void _cell_button_pressed(Object *p_item, int p_column, int p_id, MouseButton p_button);
-
-	static Vector<String> _get_plugins(const String &p_dir);
-
-protected:
-	void _notification(int p_what);
-
-	static void _bind_methods();
-
-public:
-	void update_plugins();
-
-	EditorPluginSettings();
-};
-
-#endif // EDITOR_PLUGIN_SETTINGS_H
+#endif

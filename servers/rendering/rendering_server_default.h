@@ -105,10 +105,6 @@ public:
 		_changes_changed();
 	}
 
-#define DISPLAY_CHANGED \
-	changes++;          \
-	_changes_changed();
-
 #else
 	_FORCE_INLINE_ static void redraw_request() {
 		changes++;
@@ -1051,6 +1047,10 @@ public:
 	virtual bool has_changed() const override;
 	virtual void init() override;
 	virtual void finish() override;
+
+	virtual bool is_on_render_thread() override {
+		return Thread::get_caller_id() == server_thread;
+	}
 
 	virtual void call_on_render_thread(const Callable &p_callable) override {
 		if (Thread::get_caller_id() == server_thread) {
