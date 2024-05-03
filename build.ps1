@@ -1,7 +1,7 @@
 # TODO: convert to Python
 $ErrorActionPreference = "Stop"
 
-[string[]] $CommonArgs = "-j 28", "compiledb=no", "debug_symbols=yes", "separate_debug_symbols=yes"
+[string[]] $CommonArgs = "-j28", "compiledb=no", "debug_symbols=yes", "separate_debug_symbols=yes"
 
 # For web, aim to minimize binary size above everything else.
 [string[]] $WebTemplateArgs = "optimize=size", "debug_symbols=no", "thread=yes"
@@ -35,7 +35,7 @@ scons platform=android target=template_debug arch=arm64 $CommonArgs
 scons platform=android target=template_release arch=arm32 $CommonArgs
 scons platform=android target=template_release arch=arm64 $CommonArgs
 Set-Location platform/android/java
-.\gradlew generateGodotTemplates
-Set-Location ../../..
-Copy-Item bin\android_debug.apk $TemplateOutDir\ -Force
-Copy-Item bin\android_release.apk $TemplateOutDir\ -Force
+# .\gradlew generateGodotTemplates
+# Set-Location ../../..
+# Copy-Item bin\android_debug.apk $TemplateOutDir\ -Force
+# Copy-Item bin\android_release.apk $TemplateOutDir\ -Force
