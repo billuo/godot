@@ -1,0 +1,45 @@
+{
+    "configurations": [
+        {
+            "inheritEnvironments": ["msvc_x64"],
+            "name": "x64-Debug",
+            "includePath": [
+                "${env.INCLUDE}",
+                "${projectRoot}",
+                "${projectRoot}\\thirdparty\\*",
+                "${projectRoot}\\thirdparty\\**\\include"
+            ],
+            "defines": [
+                "WIN32",
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "TOOLS_ENABLED",
+                "DEBUG_ENABLED",
+                "NDEBUG",
+                "ENGINE_UPDATE_CHECK_ENABLED",
+                "NO_EDITOR_SPLASH",
+                "WINDOWS_ENABLED",
+                "WASAPI_ENABLED",
+                "WINMIDI_ENABLED",
+                "TYPED_METHOD_BIND",
+                "NOMINMAX",
+                "_WIN64",
+                "VULKAN_ENABLED",
+                "RD_ENABLED",
+                "GLES3_ENABLED",
+                ,
+                "MINIZIP_ENABLED",
+                "BROTLI_ENABLED",
+                "THREADS_ENABLED",
+                "CLIPPER2_ENABLED",
+                "ZSTD_STATIC_LINKING_ONLY",
+                "USE_VOLK",
+                "VK_USE_PLATFORM_WIN32_KHR",
+                "GLAD_ENABLED",
+                "EGL_ENABLED"
+            ],
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ]
+}
