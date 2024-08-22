@@ -124,6 +124,16 @@ bool EditorPropertyDictionaryObject::_set(const StringName &p_name, const Varian
 }
 
 bool EditorPropertyDictionaryObject::_get(const StringName &p_name, Variant &r_ret) const {
+	if (!get_by_property_name(p_name, r_ret)) {
+		return false;
+	}
+	if (r_ret.get_type() == Variant::OBJECT && Object::cast_to<EncodedObjectAsID>(r_ret)) {
+		r_ret = Object::cast_to<EncodedObjectAsID>(r_ret)->get_object_id();
+	}
+	return true;
+}
+
+bool EditorPropertyDictionaryObject::get_by_property_name(const String &p_name, Variant &r_ret) const {
 	String name = p_name;
 
 	if (name == "new_item_key") {
@@ -140,10 +150,6 @@ bool EditorPropertyDictionaryObject::_get(const StringName &p_name, Variant &r_r
 		int index = name.get_slicec('/', 1).to_int();
 		Variant key = dict.get_key_at_index(index);
 		r_ret = dict[key];
-		if (r_ret.get_type() == Variant::OBJECT && Object::cast_to<EncodedObjectAsID>(r_ret)) {
-			r_ret = Object::cast_to<EncodedObjectAsID>(r_ret)->get_object_id();
-		}
-
 		return true;
 	}
 
@@ -235,6 +241,9 @@ void EditorPropertyArray::_property_changed(const String &p_property, Variant p_
 	Variant array = object->get_array().duplicate();
 	array.set(index, p_value);
 	emit_changed(get_edited_property(), array, p_name, p_changing);
+	if (p_changing) {
+		object->set_array(array);
+	}
 }
 
 void EditorPropertyArray::_change_type(Object *p_button, int p_slot_index) {
@@ -251,6 +260,10 @@ void EditorPropertyArray::_change_type_menu(int p_index) {
 		_remove_pressed(changing_type_index);
 		return;
 	}
+
+	ERR_FAIL_COND_MSG(
+			changing_type_index == EditorPropertyArrayObject::NOT_CHANGING_TYPE,
+			"Tried to change type of an array item, but no item was selected.");
 
 	Variant value;
 	VariantInternal::initialize(&value, Variant::Type(p_index));
@@ -273,7 +286,7 @@ void EditorPropertyArray::_create_new_property_slot() {
 	reorder_button->set_icon(get_editor_theme_icon(SNAME("TripleBar")));
 	reorder_button->set_default_cursor_shape(Control::CURSOR_MOVE);
 	reorder_button->set_disabled(is_read_only());
-	reorder_button->connect(SNAME("gui_input"), callable_mp(this, &EditorPropertyArray::_reorder_button_gui_input));
+	reorder_button->connect(SceneStringName(gui_input), callable_mp(this, &EditorPropertyArray::_reorder_button_gui_input));
 	reorder_button->connect(SNAME("button_up"), callable_mp(this, &EditorPropertyArray::_reorder_button_up));
 	reorder_button->connect(SNAME("button_down"), callable_mp(this, &EditorPropertyArray::_reorder_button_down).bind(idx));
 
@@ -287,13 +300,13 @@ void EditorPropertyArray::_create_new_property_slot() {
 		Button *edit_btn = memnew(Button);
 		edit_btn->set_icon(get_editor_theme_icon(SNAME("Edit")));
 		edit_btn->set_disabled(is_read_only());
-		edit_btn->connect("pressed", callable_mp(this, &EditorPropertyArray::_change_type).bind(edit_btn, idx));
+		edit_btn->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyArray::_change_type).bind(edit_btn, idx));
 		hbox->add_child(edit_btn);
 	} else {
 		Button *remove_btn = memnew(Button);
 		remove_btn->set_icon(get_editor_theme_icon(SNAME("Remove")));
 		remove_btn->set_disabled(is_read_only());
-		remove_btn->connect("pressed", callable_mp(this, &EditorPropertyArray::_remove_pressed).bind(idx));
+		remove_btn->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyArray::_remove_pressed).bind(idx));
 		hbox->add_child(remove_btn);
 	}
 	property_vbox->add_child(hbox);
@@ -374,7 +387,7 @@ void EditorPropertyArray::update_property() {
 			size_slider->set_max(INT32_MAX);
 			size_slider->set_h_size_flags(SIZE_EXPAND_FILL);
 			size_slider->set_read_only(is_read_only());
-			size_slider->connect("value_changed", callable_mp(this, &EditorPropertyArray::_length_changed));
+			size_slider->connect(SceneStringName(value_changed), callable_mp(this, &EditorPropertyArray::_length_changed));
 			hbox->add_child(size_slider);
 
 			property_vbox = memnew(VBoxContainer);
@@ -383,15 +396,13 @@ void EditorPropertyArray::update_property() {
 
 			button_add_item = EditorInspector::create_inspector_action_button(TTR("Add Element"));
 			button_add_item->set_icon(get_editor_theme_icon(SNAME("Add")));
-			button_add_item->connect(SNAME("pressed"), callable_mp(this, &EditorPropertyArray::_add_element));
+			button_add_item->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyArray::_add_element));
 			button_add_item->set_disabled(is_read_only());
 			vbox->add_child(button_add_item);
 
 			paginator = memnew(EditorPaginator);
 			paginator->connect("page_changed", callable_mp(this, &EditorPropertyArray::_page_changed));
 			vbox->add_child(paginator);
-
-			_update_property_bg();
 
 			for (int i = 0; i < page_length; i++) {
 				_create_new_property_slot();
@@ -430,7 +441,7 @@ void EditorPropertyArray::update_property() {
 					editor->setup("Object");
 					new_prop = editor;
 				} else {
-					new_prop = EditorInspector::instantiate_property_editor(nullptr, value_type, "", subtype_hint, subtype_hint_string, PROPERTY_USAGE_NONE);
+					new_prop = EditorInspector::instantiate_property_editor(this, value_type, "", subtype_hint, subtype_hint_string, PROPERTY_USAGE_NONE);
 				}
 				new_prop->set_selectable(false);
 				new_prop->set_use_folding(is_using_folding());
@@ -443,6 +454,10 @@ void EditorPropertyArray::update_property() {
 				slot.prop = new_prop;
 				slot.set_index(idx);
 			}
+			if (slot.index == changing_type_index) {
+				callable_mp(slot.prop, &EditorProperty::grab_focus).call_deferred(0);
+				changing_type_index = EditorPropertyArrayObject::NOT_CHANGING_TYPE;
+			}
 			slot.prop->update_property();
 		}
 
@@ -454,7 +469,6 @@ void EditorPropertyArray::update_property() {
 			memdelete(container);
 			button_add_item = nullptr;
 			container = nullptr;
-			_update_property_bg();
 			slots.clear();
 		}
 	}
@@ -628,10 +642,6 @@ Node *EditorPropertyArray::get_base_node() {
 void EditorPropertyArray::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_THEME_CHANGED:
-			if (EditorThemeManager::is_generated_theme_outdated()) {
-				_update_property_bg();
-			}
-			[[fallthrough]];
 		case NOTIFICATION_ENTER_TREE: {
 			change_type->clear();
 			for (int i = 0; i < Variant::VARIANT_MAX; i++) {
@@ -826,9 +836,6 @@ bool EditorPropertyArray::is_colored(ColorationMode p_mode) {
 	return p_mode == COLORATION_CONTAINER_RESOURCE;
 }
 
-void EditorPropertyArray::_bind_methods() {
-}
-
 EditorPropertyArray::EditorPropertyArray() {
 	object.instantiate();
 	page_length = int(EDITOR_GET("interface/inspector/max_array_dictionary_items_per_page"));
@@ -836,21 +843,22 @@ EditorPropertyArray::EditorPropertyArray() {
 	edit = memnew(Button);
 	edit->set_h_size_flags(SIZE_EXPAND_FILL);
 	edit->set_clip_text(true);
-	edit->connect("pressed", callable_mp(this, &EditorPropertyArray::_edit_pressed));
+	edit->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyArray::_edit_pressed));
 	edit->set_toggle_mode(true);
 	SET_DRAG_FORWARDING_CD(edit, EditorPropertyArray);
-	edit->connect("draw", callable_mp(this, &EditorPropertyArray::_button_draw));
+	edit->connect(SceneStringName(draw), callable_mp(this, &EditorPropertyArray::_button_draw));
 	add_child(edit);
 	add_focusable(edit);
 
 	change_type = memnew(PopupMenu);
 	add_child(change_type);
-	change_type->connect("id_pressed", callable_mp(this, &EditorPropertyArray::_change_type_menu));
+	change_type->connect(SceneStringName(id_pressed), callable_mp(this, &EditorPropertyArray::_change_type_menu));
 	changing_type_index = -1;
 
 	subtype = Variant::NIL;
 	subtype_hint = PROPERTY_HINT_NONE;
 	subtype_hint_string = "";
+	has_borders = true;
 }
 
 ///////////////////// DICTIONARY ///////////////////////////
@@ -896,6 +904,8 @@ void EditorPropertyDictionary::_add_key_value() {
 	VariantInternal::initialize(&new_value, type);
 	object->set_new_item_value(new_value);
 
+	object->set_dict(dict);
+	slots[(dict.size() - 1) % page_length].update_prop_or_index();
 	emit_changed(get_edited_property(), dict);
 }
 
@@ -907,7 +917,7 @@ void EditorPropertyDictionary::_create_new_property_slot(int p_idx) {
 	Button *edit_btn = memnew(Button);
 	edit_btn->set_icon(get_editor_theme_icon(SNAME("Edit")));
 	edit_btn->set_disabled(is_read_only());
-	edit_btn->connect("pressed", callable_mp(this, &EditorPropertyDictionary::_change_type).bind(edit_btn, slots.size()));
+	edit_btn->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyDictionary::_change_type).bind(edit_btn, slots.size()));
 	hbox->add_child(edit_btn);
 	if (add_panel) {
 		add_panel->get_child(0)->add_child(hbox);
@@ -924,6 +934,10 @@ void EditorPropertyDictionary::_create_new_property_slot(int p_idx) {
 }
 
 void EditorPropertyDictionary::_change_type_menu(int p_index) {
+	ERR_FAIL_COND_MSG(
+			changing_type_index == EditorPropertyDictionaryObject::NOT_CHANGING_TYPE,
+			"Tried to change the type of a dict key or value, but nothing was selected.");
+
 	Variant value;
 	switch (changing_type_index) {
 		case EditorPropertyDictionaryObject::NEW_KEY_INDEX:
@@ -945,6 +959,10 @@ void EditorPropertyDictionary::_change_type_menu(int p_index) {
 				dict[key] = value;
 			} else {
 				dict.erase(key);
+				object->set_dict(dict);
+				for (Slot &slot : slots) {
+					slot.update_prop_or_index();
+				}
 			}
 
 			emit_changed(get_edited_property(), dict);
@@ -966,6 +984,7 @@ void EditorPropertyDictionary::update_property() {
 			memdelete(container);
 			button_add_item = nullptr;
 			container = nullptr;
+			add_panel = nullptr;
 			slots.clear();
 		}
 		return;
@@ -1000,7 +1019,6 @@ void EditorPropertyDictionary::update_property() {
 			paginator = memnew(EditorPaginator);
 			paginator->connect("page_changed", callable_mp(this, &EditorPropertyDictionary::_page_changed));
 			vbox->add_child(paginator);
-			_update_property_bg();
 
 			for (int i = 0; i < page_length; i++) {
 				_create_new_property_slot(slots.size());
@@ -1008,7 +1026,7 @@ void EditorPropertyDictionary::update_property() {
 
 			add_panel = memnew(PanelContainer);
 			property_vbox->add_child(add_panel);
-			add_panel->add_theme_style_override(SNAME("panel"), get_theme_stylebox(SNAME("DictionaryAddItem")));
+			add_panel->add_theme_style_override(SceneStringName(panel), get_theme_stylebox(SNAME("DictionaryAddItem")));
 			VBoxContainer *add_vbox = memnew(VBoxContainer);
 			add_panel->add_child(add_vbox);
 
@@ -1018,7 +1036,7 @@ void EditorPropertyDictionary::update_property() {
 			button_add_item = EditorInspector::create_inspector_action_button(TTR("Add Key/Value Pair"));
 			button_add_item->set_icon(get_theme_icon(SNAME("Add"), EditorStringName(EditorIcons)));
 			button_add_item->set_disabled(is_read_only());
-			button_add_item->connect("pressed", callable_mp(this, &EditorPropertyDictionary::_add_key_value));
+			button_add_item->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyDictionary::_add_key_value));
 			add_vbox->add_child(button_add_item);
 		}
 
@@ -1041,7 +1059,8 @@ void EditorPropertyDictionary::update_property() {
 			if (!slot_visible) {
 				continue;
 			}
-			Variant value = object->get(slot.prop_name);
+			Variant value;
+			object->get_by_property_name(slot.prop_name, value);
 			Variant::Type value_type = value.get_type();
 
 			// Check if the editor property needs to be updated.
@@ -1055,7 +1074,7 @@ void EditorPropertyDictionary::update_property() {
 					editor->setup("Object");
 					new_prop = editor;
 				} else {
-					new_prop = EditorInspector::instantiate_property_editor(nullptr, value_type, "", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE);
+					new_prop = EditorInspector::instantiate_property_editor(this, value_type, "", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NONE);
 				}
 				new_prop->set_selectable(false);
 				new_prop->set_use_folding(is_using_folding());
@@ -1065,6 +1084,14 @@ void EditorPropertyDictionary::update_property() {
 				new_prop->set_read_only(is_read_only());
 				slot.set_prop(new_prop);
 			}
+
+			// We need to grab the focus of the property that is being changed, even if the type didn't actually changed.
+			// Otherwise, focus will stay on the change type button, which is not very user friendly.
+			if (changing_type_index == slot.index) {
+				callable_mp(slot.prop, &EditorProperty::grab_focus).call_deferred(0);
+				changing_type_index = EditorPropertyDictionaryObject::NOT_CHANGING_TYPE; // Reset to avoid grabbing focus again.
+			}
+
 			slot.prop->update_property();
 		}
 		updating = false;
@@ -1075,7 +1102,6 @@ void EditorPropertyDictionary::update_property() {
 			memdelete(container);
 			button_add_item = nullptr;
 			container = nullptr;
-			_update_property_bg();
 			add_panel = nullptr;
 			slots.clear();
 		}
@@ -1089,10 +1115,6 @@ void EditorPropertyDictionary::_object_id_selected(const StringName &p_property,
 void EditorPropertyDictionary::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_THEME_CHANGED:
-			if (EditorThemeManager::is_generated_theme_outdated()) {
-				_update_property_bg();
-			}
-			[[fallthrough]];
 		case NOTIFICATION_ENTER_TREE: {
 			change_type->clear();
 			for (int i = 0; i < Variant::VARIANT_MAX; i++) {
@@ -1109,6 +1131,7 @@ void EditorPropertyDictionary::_notification(int p_what) {
 
 			if (button_add_item) {
 				button_add_item->set_icon(get_editor_theme_icon(SNAME("Add")));
+				add_panel->add_theme_style_override(SceneStringName(panel), get_theme_stylebox(SNAME("DictionaryAddItem")));
 			}
 		} break;
 	}
@@ -1140,9 +1163,6 @@ void EditorPropertyDictionary::_page_changed(int p_page) {
 	update_property();
 }
 
-void EditorPropertyDictionary::_bind_methods() {
-}
-
 bool EditorPropertyDictionary::is_colored(ColorationMode p_mode) {
 	return p_mode == COLORATION_CONTAINER_RESOURCE;
 }
@@ -1154,7 +1174,7 @@ EditorPropertyDictionary::EditorPropertyDictionary() {
 	edit = memnew(Button);
 	edit->set_h_size_flags(SIZE_EXPAND_FILL);
 	edit->set_clip_text(true);
-	edit->connect("pressed", callable_mp(this, &EditorPropertyDictionary::_edit_pressed));
+	edit->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyDictionary::_edit_pressed));
 	edit->set_toggle_mode(true);
 	add_child(edit);
 	add_focusable(edit);
@@ -1164,8 +1184,9 @@ EditorPropertyDictionary::EditorPropertyDictionary() {
 	paginator = nullptr;
 	change_type = memnew(PopupMenu);
 	add_child(change_type);
-	change_type->connect("id_pressed", callable_mp(this, &EditorPropertyDictionary::_change_type_menu));
+	change_type->connect(SceneStringName(id_pressed), callable_mp(this, &EditorPropertyDictionary::_change_type_menu));
 	changing_type_index = -1;
+	has_borders = true;
 }
 
 ///////////////////// LOCALIZABLE STRING ///////////////////////////
@@ -1300,7 +1321,7 @@ void EditorPropertyLocalizableString::update_property() {
 			Button *edit_btn = memnew(Button);
 			edit_btn->set_icon(get_editor_theme_icon(SNAME("Remove")));
 			hbox->add_child(edit_btn);
-			edit_btn->connect("pressed", callable_mp(this, &EditorPropertyLocalizableString::_remove_item).bind(edit_btn, remove_index));
+			edit_btn->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyLocalizableString::_remove_item).bind(edit_btn, remove_index));
 
 			prop->update_property();
 		}
@@ -1308,7 +1329,7 @@ void EditorPropertyLocalizableString::update_property() {
 		if (page_index == max_page) {
 			button_add_item = EditorInspector::create_inspector_action_button(TTR("Add Translation"));
 			button_add_item->set_icon(get_editor_theme_icon(SNAME("Add")));
-			button_add_item->connect("pressed", callable_mp(this, &EditorPropertyLocalizableString::_add_locale_popup));
+			button_add_item->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyLocalizableString::_add_locale_popup));
 			property_vbox->add_child(button_add_item);
 		}
 
@@ -1358,9 +1379,6 @@ void EditorPropertyLocalizableString::_page_changed(int p_page) {
 	update_property();
 }
 
-void EditorPropertyLocalizableString::_bind_methods() {
-}
-
 EditorPropertyLocalizableString::EditorPropertyLocalizableString() {
 	object.instantiate();
 	page_length = int(EDITOR_GET("interface/inspector/max_array_dictionary_items_per_page"));
@@ -1368,7 +1386,7 @@ EditorPropertyLocalizableString::EditorPropertyLocalizableString() {
 	edit = memnew(Button);
 	edit->set_h_size_flags(SIZE_EXPAND_FILL);
 	edit->set_clip_text(true);
-	edit->connect("pressed", callable_mp(this, &EditorPropertyLocalizableString::_edit_pressed));
+	edit->connect(SceneStringName(pressed), callable_mp(this, &EditorPropertyLocalizableString::_edit_pressed));
 	edit->set_toggle_mode(true);
 	add_child(edit);
 	add_focusable(edit);

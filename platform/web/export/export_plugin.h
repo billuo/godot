@@ -46,16 +46,17 @@
 class EditorExportPlatformWeb : public EditorExportPlatform {
 	GDCLASS(EditorExportPlatformWeb, EditorExportPlatform);
 
-	enum HTTPServerState {
-		HTTP_SERVER_STATE_OFF,
-		HTTP_SERVER_STATE_ON,
+	enum RemoteDebugState {
+		REMOTE_DEBUG_STATE_UNAVAILABLE,
+		REMOTE_DEBUG_STATE_AVAILABLE,
+		REMOTE_DEBUG_STATE_SERVING,
 	};
 
 	Ref<ImageTexture> logo;
 	Ref<ImageTexture> run_icon;
 	Ref<ImageTexture> stop_icon;
 	Ref<ImageTexture> restart_icon;
-	HTTPServerState server_state = HTTP_SERVER_STATE_OFF;
+	RemoteDebugState remote_debug_state = REMOTE_DEBUG_STATE_UNAVAILABLE;
 
 	Ref<EditorHTTPServer> server;
 

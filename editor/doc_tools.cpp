@@ -38,7 +38,7 @@
 #include "core/io/marshalls.h"
 #include "core/io/resource_importer.h"
 #include "core/object/script_language.h"
-#include "core/string/translation.h"
+#include "core/string/translation_server.h"
 #include "editor/editor_settings.h"
 #include "editor/export/editor_export.h"
 #include "scene/resources/theme.h"
@@ -344,25 +344,6 @@ void DocTools::merge_from(const DocTools &p_data) {
 		merge_theme_properties(c.theme_properties, cf.theme_properties);
 
 		merge_operators(c.operators, cf.operators);
-
-#ifndef MODULE_MONO_ENABLED
-		// The Mono module defines some properties that we want to keep when
-		// re-generating docs with a non-Mono build, to prevent pointless diffs
-		// (and loss of descriptions) depending on the config of the doc writer.
-		// We use a horrible hack to force keeping the relevant properties,
-		// hardcoded below. At least it's an ad hoc hack... ¯\_(ツ)_/¯
-		// Don't show this to your kids.
-		if (c.name == "@GlobalScope") {
-			// Retrieve GodotSharp singleton.
-			for (int j = 0; j < cf.properties.size(); j++) {
-				if (cf.properties[j].name == "GodotSharp") {
-					c.properties.push_back(cf.properties[j]);
-					c.properties.sort();
-					break;
-				}
-			}
-		}
-#endif
 	}
 }
 
@@ -1638,7 +1619,7 @@ Error DocTools::save_classes(const String &p_default_path, const HashMap<String,
 		String schema_path;
 		if (p_use_relative_schema) {
 			// Modules are nested deep, so change the path to reference the same schema everywhere.
-			schema_path = save_path.find("modules/") != -1 ? "../../../doc/class.xsd" : "../class.xsd";
+			schema_path = save_path.contains("modules/") ? "../../../doc/class.xsd" : "../class.xsd";
 		} else {
 			schema_path = "https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd";
 		}

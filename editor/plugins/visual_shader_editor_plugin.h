@@ -34,6 +34,7 @@
 #include "editor/editor_properties.h"
 #include "editor/plugins/editor_plugin.h"
 #include "editor/plugins/editor_resource_conversion_plugin.h"
+#include "editor/plugins/shader/shader_editor.h"
 #include "scene/gui/graph_edit.h"
 #include "scene/resources/syntax_highlighter.h"
 #include "scene/resources/visual_shader.h"
@@ -64,6 +65,34 @@ protected:
 public:
 	void set_editor(VisualShaderEditor *p_editor);
 	virtual Control *create_editor(const Ref<Resource> &p_parent_resource, const Ref<VisualShaderNode> &p_node);
+};
+
+class VSGraphNode : public GraphNode {
+	GDCLASS(VSGraphNode, GraphNode);
+
+protected:
+	void _draw_port(int p_slot_index, Point2i p_pos, bool p_left, const Color &p_color, const Color &p_rim_color);
+	virtual void draw_port(int p_slot_index, Point2i p_pos, bool p_left, const Color &p_color) override;
+};
+
+class VSRerouteNode : public VSGraphNode {
+	GDCLASS(VSRerouteNode, GraphNode);
+
+	const float FADE_ANIMATION_LENGTH_SEC = 0.3;
+
+	float icon_opacity = 0.0;
+
+protected:
+	void _notification(int p_what);
+
+	virtual void draw_port(int p_slot_index, Point2i p_pos, bool p_left, const Color &p_color) override;
+
+public:
+	VSRerouteNode();
+	void set_icon_opacity(float p_opacity);
+
+	void _on_mouse_entered();
+	void _on_mouse_exited();
 };
 
 class VisualShaderGraphPlugin : public RefCounted {
@@ -140,6 +169,7 @@ public:
 	void set_frame_color_enabled(VisualShader::Type p_type, int p_node_id, bool p_enable);
 	void set_frame_color(VisualShader::Type p_type, int p_node_id, const Color &p_color);
 	void set_frame_autoshrink_enabled(VisualShader::Type p_type, int p_node_id, bool p_enable);
+	void update_reroute_nodes();
 	int get_constant_index(float p_constant) const;
 	Ref<Script> get_node_script(int p_node_id) const;
 	void update_theme();
@@ -166,8 +196,8 @@ public:
 	VisualShaderEditedProperty() {}
 };
 
-class VisualShaderEditor : public VBoxContainer {
-	GDCLASS(VisualShaderEditor, VBoxContainer);
+class VisualShaderEditor : public ShaderEditor {
+	GDCLASS(VisualShaderEditor, ShaderEditor);
 	friend class VisualShaderGraphPlugin;
 
 	PopupPanel *property_editor_popup = nullptr;
@@ -297,6 +327,7 @@ class VisualShaderEditor : public VBoxContainer {
 
 	enum ConnectionMenuOptions {
 		INSERT_NEW_NODE,
+		INSERT_NEW_REROUTE,
 		DISCONNECT,
 	};
 
@@ -566,6 +597,12 @@ protected:
 	static void _bind_methods();
 
 public:
+	virtual void edit_shader(const Ref<Shader> &p_shader) override;
+	virtual void apply_shaders() override;
+	virtual bool is_unsaved() const override;
+	virtual void save_external_data(const String &p_str = "") override;
+	virtual void validate_script() override;
+
 	void add_plugin(const Ref<VisualShaderNodePlugin> &p_plugin);
 	void remove_plugin(const Ref<VisualShaderNodePlugin> &p_plugin);
 
@@ -579,7 +616,6 @@ public:
 
 	virtual Size2 get_minimum_size() const override;
 
-	void edit(VisualShader *p_visual_shader);
 	Ref<VisualShader> get_visual_shader() const { return visual_shader; }
 
 	VisualShaderEditor();
@@ -597,9 +633,6 @@ class EditorPropertyVisualShaderMode : public EditorProperty {
 	OptionButton *options = nullptr;
 
 	void _option_selected(int p_which);
-
-protected:
-	static void _bind_methods();
 
 public:
 	void setup(const Vector<String> &p_options);
@@ -626,7 +659,6 @@ class VisualShaderNodePortPreview : public Control {
 	void _shader_changed(); //must regen
 protected:
 	void _notification(int p_what);
-	static void _bind_methods();
 
 public:
 	virtual Size2 get_minimum_size() const override;

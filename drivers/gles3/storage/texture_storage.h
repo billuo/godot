@@ -169,7 +169,7 @@ struct Texture {
 		TYPE_3D
 	};
 
-	Type type;
+	Type type = TYPE_2D;
 	RS::TextureLayeredType layered_type = RS::TEXTURE_LAYERED_2D_ARRAY;
 
 	GLenum target = GL_TEXTURE_2D;
@@ -553,6 +553,7 @@ public:
 	void texture_set_data(RID p_texture, const Ref<Image> &p_image, int p_layer = 0);
 	virtual Image::Format texture_get_format(RID p_texture) const override;
 	uint32_t texture_get_texid(RID p_texture) const;
+	Vector3i texture_get_size(RID p_texture) const;
 	uint32_t texture_get_width(RID p_texture) const;
 	uint32_t texture_get_height(RID p_texture) const;
 	uint32_t texture_get_depth(RID p_texture) const;

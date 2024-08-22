@@ -31,7 +31,6 @@
 #include "class_db.h"
 
 #include "core/config/engine.h"
-#include "core/core_string_names.h"
 #include "core/io/resource_loader.h"
 #include "core/object/script_language.h"
 #include "core/os/mutex.h"
@@ -77,6 +76,21 @@ class PlaceholderExtensionInstance {
 	StringName class_name;
 	HashMap<StringName, Variant> properties;
 
+	// Checks if a property is from a runtime class, and not a non-runtime base class.
+	bool is_runtime_property(const StringName &p_property_name) {
+		StringName current_class_name = class_name;
+
+		while (ClassDB::is_class_runtime(current_class_name)) {
+			if (ClassDB::has_property(current_class_name, p_property_name, true)) {
+				return true;
+			}
+
+			current_class_name = ClassDB::get_parent_class(current_class_name);
+		}
+
+		return false;
+	}
+
 public:
 	PlaceholderExtensionInstance(const StringName &p_class_name) {
 		class_name = p_class_name;
@@ -84,27 +98,24 @@ public:
 
 	~PlaceholderExtensionInstance() {}
 
-	void set(const StringName &p_name, const Variant &p_value) {
-		bool is_default_valid = false;
-		Variant default_value = ClassDB::class_get_default_property_value(class_name, p_name, &is_default_valid);
-
-		// If there's a default value, then we know it's a valid property.
-		if (is_default_valid) {
+	void set(const StringName &p_name, const Variant &p_value, bool &r_valid) {
+		r_valid = is_runtime_property(p_name);
+		if (r_valid) {
 			properties[p_name] = p_value;
 		}
 	}
 
-	Variant get(const StringName &p_name) {
+	Variant get(const StringName &p_name, bool &r_valid) {
 		const Variant *value = properties.getptr(p_name);
 		Variant ret;
 
 		if (value) {
 			ret = *value;
+			r_valid = true;
 		} else {
-			bool is_default_valid = false;
-			Variant default_value = ClassDB::class_get_default_property_value(class_name, p_name, &is_default_valid);
-			if (is_default_valid) {
-				ret = default_value;
+			r_valid = is_runtime_property(p_name);
+			if (r_valid) {
+				ret = ClassDB::class_get_default_property_value(class_name, p_name);
 			}
 		}
 
@@ -116,10 +127,10 @@ public:
 		const StringName &name = *(StringName *)p_name;
 		const Variant &value = *(const Variant *)p_value;
 
-		self->set(name, value);
+		bool valid = false;
+		self->set(name, value, valid);
 
-		// We have to return true so Godot doesn't try to call the real setter function.
-		return true;
+		return valid;
 	}
 
 	static GDExtensionBool placeholder_instance_get(GDExtensionClassInstancePtr p_instance, GDExtensionConstStringNamePtr p_name, GDExtensionVariantPtr r_ret) {
@@ -127,10 +138,10 @@ public:
 		const StringName &name = *(StringName *)p_name;
 		Variant *value = (Variant *)r_ret;
 
-		*value = self->get(name);
+		bool valid = false;
+		*value = self->get(name, valid);
 
-		// We have to return true so Godot doesn't try to call the real getter function.
-		return true;
+		return valid;
 	}
 
 	static const GDExtensionPropertyInfo *placeholder_instance_get_property_list(GDExtensionClassInstancePtr p_instance, uint32_t *r_count) {
@@ -173,9 +184,9 @@ public:
 	static GDExtensionObjectPtr placeholder_class_create_instance(void *p_class_userdata) {
 		ClassDB::ClassInfo *ti = (ClassDB::ClassInfo *)p_class_userdata;
 
-		// Find the closest native parent.
+		// Find the closest native parent, that isn't a runtime class.
 		ClassDB::ClassInfo *native_parent = ti->inherits_ptr;
-		while (native_parent->gdextension) {
+		while (native_parent->gdextension || native_parent->is_runtime) {
 			native_parent = native_parent->inherits_ptr;
 		}
 		ERR_FAIL_NULL_V(native_parent->creation_func, nullptr);
@@ -290,6 +301,29 @@ StringName ClassDB::get_parent_class_nocheck(const StringName &p_class) {
 		return StringName();
 	}
 	return ti->inherits;
+}
+
+bool ClassDB::get_inheritance_chain_nocheck(const StringName &p_class, Vector<StringName> &r_result) {
+	OBJTYPE_RLOCK;
+
+	ClassInfo *start = classes.getptr(p_class);
+	if (!start) {
+		return false;
+	}
+
+	int classes_to_add = 0;
+	for (ClassInfo *ti = start; ti; ti = ti->inherits_ptr) {
+		classes_to_add++;
+	}
+
+	int64_t old_size = r_result.size();
+	r_result.resize(old_size + classes_to_add);
+	StringName *w = r_result.ptrw() + old_size;
+	for (ClassInfo *ti = start; ti; ti = ti->inherits_ptr) {
+		*w++ = ti->name;
+	}
+
+	return true;
 }
 
 StringName ClassDB::get_compatibility_remapped_class(const StringName &p_class) {
@@ -506,7 +540,7 @@ Object *ClassDB::_instantiate_internal(const StringName &p_class, bool p_require
 		ERR_FAIL_NULL_V_MSG(ti->creation_func, nullptr, "Class '" + String(p_class) + "' or its base class cannot be instantiated.");
 	}
 #ifdef TOOLS_ENABLED
-	if (ti->api == API_EDITOR && !Engine::get_singleton()->is_editor_hint()) {
+	if ((ti->api == API_EDITOR || ti->api == API_EDITOR_EXTENSION) && !Engine::get_singleton()->is_editor_hint()) {
 		ERR_PRINT("Class '" + String(p_class) + "' can only be instantiated by editor.");
 		return nullptr;
 	}
@@ -523,7 +557,7 @@ Object *ClassDB::_instantiate_internal(const StringName &p_class, bool p_require
 #ifdef TOOLS_ENABLED
 		if (!p_require_real_class && ti->is_runtime && Engine::get_singleton()->is_editor_hint()) {
 			if (!ti->inherits_ptr || !ti->inherits_ptr->creation_func) {
-				ERR_PRINT_ONCE(vformat("Cannot make a placeholder instance of runtime class %s because its parent cannot be constructed.", ti->name));
+				ERR_PRINT(vformat("Cannot make a placeholder instance of runtime class %s because its parent cannot be constructed.", ti->name));
 			} else {
 				ObjectGDExtension *extension = get_placeholder_extension(ti->name);
 				return (Object *)extension->create_instance(extension->class_userdata);
@@ -665,11 +699,26 @@ bool ClassDB::can_instantiate(const StringName &p_class) {
 		return scr.is_valid() && scr->is_valid() && !scr->is_abstract();
 	}
 #ifdef TOOLS_ENABLED
-	if (ti->api == API_EDITOR && !Engine::get_singleton()->is_editor_hint()) {
+	if ((ti->api == API_EDITOR || ti->api == API_EDITOR_EXTENSION) && !Engine::get_singleton()->is_editor_hint()) {
 		return false;
 	}
 #endif
 	return (!ti->disabled && ti->creation_func != nullptr && !(ti->gdextension && !ti->gdextension->create_instance));
+}
+
+bool ClassDB::is_abstract(const StringName &p_class) {
+	OBJTYPE_RLOCK;
+
+	ClassInfo *ti = classes.getptr(p_class);
+	if (!ti) {
+		if (!ScriptServer::is_global_class(p_class)) {
+			ERR_FAIL_V_MSG(false, "Cannot get class '" + String(p_class) + "'.");
+		}
+		String path = ScriptServer::get_global_class_path(p_class);
+		Ref<Script> scr = ResourceLoader::load(path);
+		return scr.is_valid() && scr->is_valid() && scr->is_abstract();
+	}
+	return ti->creation_func == nullptr && (!ti->gdextension || ti->gdextension->create_instance == nullptr);
 }
 
 bool ClassDB::is_virtual(const StringName &p_class) {
@@ -685,7 +734,7 @@ bool ClassDB::is_virtual(const StringName &p_class) {
 		return scr.is_valid() && scr->is_valid() && scr->is_abstract();
 	}
 #ifdef TOOLS_ENABLED
-	if (ti->api == API_EDITOR && !Engine::get_singleton()->is_editor_hint()) {
+	if ((ti->api == API_EDITOR || ti->api == API_EDITOR_EXTENSION) && !Engine::get_singleton()->is_editor_hint()) {
 		return false;
 	}
 #endif
@@ -1554,7 +1603,7 @@ bool ClassDB::get_property(Object *p_object, const StringName &p_property, Varia
 	}
 
 	// The "free()" method is special, so we assume it exists and return a Callable.
-	if (p_property == CoreStringNames::get_singleton()->_free) {
+	if (p_property == CoreStringName(free_)) {
 		r_value = Callable(p_object, p_property);
 		return true;
 	}
@@ -1953,6 +2002,14 @@ bool ClassDB::is_class_reloadable(const StringName &p_class) {
 	return ti->reloadable;
 }
 
+bool ClassDB::is_class_runtime(const StringName &p_class) {
+	OBJTYPE_RLOCK;
+
+	ClassInfo *ti = classes.getptr(p_class);
+	ERR_FAIL_NULL_V_MSG(ti, false, "Cannot get class '" + String(p_class) + "'.");
+	return ti->is_runtime;
+}
+
 void ClassDB::add_resource_base_extension(const StringName &p_extension, const StringName &p_class) {
 	if (resource_base_extensions.has(p_extension)) {
 		return;
@@ -2063,6 +2120,11 @@ void ClassDB::register_extension_class(ObjectGDExtension *p_extension) {
 	ERR_FAIL_COND_MSG(!classes.has(p_extension->parent_class_name), "Parent class name for extension class not found: " + String(p_extension->parent_class_name));
 
 	ClassInfo *parent = classes.getptr(p_extension->parent_class_name);
+
+#ifdef TOOLS_ENABLED
+	// @todo This is a limitation of the current implementation, but it should be possible to remove.
+	ERR_FAIL_COND_MSG(p_extension->is_runtime && parent->gdextension && !parent->is_runtime, "Extension runtime class " + String(p_extension->class_name) + " cannot descend from " + parent->name + " which isn't also a runtime class");
+#endif
 
 	ClassInfo c;
 	c.api = p_extension->editor_class ? API_EDITOR_EXTENSION : API_EXTENSION;

@@ -1,9 +1,10 @@
 import os
-import sys
 import platform
 import subprocess
-from methods import print_warning, print_error
+import sys
 from typing import TYPE_CHECKING
+
+from methods import print_error, print_warning
 
 if TYPE_CHECKING:
     from SCons.Script.SConscript import SConsEnvironment
@@ -66,11 +67,11 @@ def get_min_target_api():
 
 
 def get_flags():
-    return [
-        ("arch", "arm64"),  # Default for convenience.
-        ("target", "template_debug"),
-        ("supported", ["mono"]),
-    ]
+    return {
+        "arch": "arm64",
+        "target": "template_debug",
+        "supported": ["mono"],
+    }
 
 
 # Check if Android NDK version is installed
@@ -188,6 +189,8 @@ def configure(env: "SConsEnvironment"):
     elif env["arch"] == "arm64":
         env.Append(CCFLAGS=["-mfix-cortex-a53-835769"])
         env.Append(CPPDEFINES=["__ARM_ARCH_8A__"])
+
+    env.Append(CCFLAGS=["-ffp-contract=off"])
 
     # Link flags
 

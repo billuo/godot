@@ -297,6 +297,19 @@ TEST_CASE("[String] Contains") {
 	CHECK(!s.contains(String("\\char_test.tscn")));
 }
 
+TEST_CASE("[String] Contains case insensitive") {
+	String s = "C:\\Godot\\project\\string_test.tscn";
+	CHECK(s.containsn("Godot"));
+	CHECK(s.containsn("godot"));
+	CHECK(s.containsn(String("Project\\string_test")));
+	CHECK(s.containsn(String("\\string_Test.tscn")));
+
+	CHECK(!s.containsn("Godoh"));
+	CHECK(!s.containsn("godoh"));
+	CHECK(!s.containsn(String("project\\string test")));
+	CHECK(!s.containsn(String("\\char_test.tscn")));
+}
+
 TEST_CASE("[String] Test chr") {
 	CHECK(String::chr('H') == "H");
 	CHECK(String::chr(0x3012)[0] == 0x3012);
@@ -376,7 +389,7 @@ TEST_CASE("[String] Find") {
 	MULTICHECK_STRING_INT_EQ(s, rfind, "", 15, -1);
 }
 
-TEST_CASE("[String] Find no case") {
+TEST_CASE("[String] Find case insensitive") {
 	String s = "Pretty Whale Whale";
 	MULTICHECK_STRING_EQ(s, findn, "WHA", 7);
 	MULTICHECK_STRING_INT_EQ(s, findn, "WHA", 9, 13);
@@ -625,64 +638,90 @@ TEST_CASE("[String] Ends with") {
 }
 
 TEST_CASE("[String] Splitting") {
-	String s = "Mars,Jupiter,Saturn,Uranus";
-	const char *slices_l[3] = { "Mars", "Jupiter", "Saturn,Uranus" };
-	MULTICHECK_SPLIT(s, split, ",", true, 2, slices_l, 3);
+	{
+		const String s = "Mars,Jupiter,Saturn,Uranus";
 
-	const char *slices_r[3] = { "Mars,Jupiter", "Saturn", "Uranus" };
-	MULTICHECK_SPLIT(s, rsplit, ",", true, 2, slices_r, 3);
+		const char *slices_l[3] = { "Mars", "Jupiter", "Saturn,Uranus" };
+		MULTICHECK_SPLIT(s, split, ",", true, 2, slices_l, 3);
 
-	s = "test";
-	const char *slices_3[4] = { "t", "e", "s", "t" };
-	MULTICHECK_SPLIT(s, split, "", true, 0, slices_3, 4);
-
-	s = "";
-	const char *slices_4[1] = { "" };
-	MULTICHECK_SPLIT(s, split, "", true, 0, slices_4, 1);
-	MULTICHECK_SPLIT(s, split, "", false, 0, slices_4, 0);
-
-	s = "Mars Jupiter Saturn Uranus";
-	const char *slices_s[4] = { "Mars", "Jupiter", "Saturn", "Uranus" };
-	Vector<String> l = s.split_spaces();
-	for (int i = 0; i < l.size(); i++) {
-		CHECK(l[i] == slices_s[i]);
+		const char *slices_r[3] = { "Mars,Jupiter", "Saturn", "Uranus" };
+		MULTICHECK_SPLIT(s, rsplit, ",", true, 2, slices_r, 3);
 	}
 
-	s = "1.2;2.3 4.5";
-	const double slices_d[3] = { 1.2, 2.3, 4.5 };
-
-	Vector<double> d_arr;
-	d_arr = s.split_floats(";");
-	CHECK(d_arr.size() == 2);
-	for (int i = 0; i < d_arr.size(); i++) {
-		CHECK(ABS(d_arr[i] - slices_d[i]) <= 0.00001);
+	{
+		const String s = "test";
+		const char *slices[4] = { "t", "e", "s", "t" };
+		MULTICHECK_SPLIT(s, split, "", true, 0, slices, 4);
 	}
 
-	Vector<String> keys;
-	keys.push_back(";");
-	keys.push_back(" ");
-
-	Vector<float> f_arr;
-	f_arr = s.split_floats_mk(keys);
-	CHECK(f_arr.size() == 3);
-	for (int i = 0; i < f_arr.size(); i++) {
-		CHECK(ABS(f_arr[i] - slices_d[i]) <= 0.00001);
+	{
+		const String s = "";
+		const char *slices[1] = { "" };
+		MULTICHECK_SPLIT(s, split, "", true, 0, slices, 1);
+		MULTICHECK_SPLIT(s, split, "", false, 0, slices, 0);
 	}
 
-	s = "1;2 4";
-	const int slices_i[3] = { 1, 2, 4 };
-
-	Vector<int> ii;
-	ii = s.split_ints(";");
-	CHECK(ii.size() == 2);
-	for (int i = 0; i < ii.size(); i++) {
-		CHECK(ii[i] == slices_i[i]);
+	{
+		const String s = "Mars Jupiter Saturn Uranus";
+		const char *slices[4] = { "Mars", "Jupiter", "Saturn", "Uranus" };
+		Vector<String> l = s.split_spaces();
+		for (int i = 0; i < l.size(); i++) {
+			CHECK(l[i] == slices[i]);
+		}
 	}
 
-	ii = s.split_ints_mk(keys);
-	CHECK(ii.size() == 3);
-	for (int i = 0; i < ii.size(); i++) {
-		CHECK(ii[i] == slices_i[i]);
+	{
+		const String s = "1.2;2.3 4.5";
+		const double slices[3] = { 1.2, 2.3, 4.5 };
+
+		const Vector<double> d_arr = s.split_floats(";");
+		CHECK(d_arr.size() == 2);
+		for (int i = 0; i < d_arr.size(); i++) {
+			CHECK(ABS(d_arr[i] - slices[i]) <= 0.00001);
+		}
+
+		const Vector<String> keys = { ";", " " };
+		const Vector<float> f_arr = s.split_floats_mk(keys);
+		CHECK(f_arr.size() == 3);
+		for (int i = 0; i < f_arr.size(); i++) {
+			CHECK(ABS(f_arr[i] - slices[i]) <= 0.00001);
+		}
+	}
+
+	{
+		const String s = " -2.0        5";
+		const double slices[10] = { 0, -2, 0, 0, 0, 0, 0, 0, 0, 5 };
+
+		const Vector<double> arr = s.split_floats(" ");
+		CHECK(arr.size() == 10);
+		for (int i = 0; i < arr.size(); i++) {
+			CHECK(ABS(arr[i] - slices[i]) <= 0.00001);
+		}
+
+		const Vector<String> keys = { ";", " " };
+		const Vector<float> mk = s.split_floats_mk(keys);
+		CHECK(mk.size() == 10);
+		for (int i = 0; i < mk.size(); i++) {
+			CHECK(mk[i] == slices[i]);
+		}
+	}
+
+	{
+		const String s = "1;2 4";
+		const int slices[3] = { 1, 2, 4 };
+
+		const Vector<int> arr = s.split_ints(";");
+		CHECK(arr.size() == 2);
+		for (int i = 0; i < arr.size(); i++) {
+			CHECK(arr[i] == slices[i]);
+		}
+
+		const Vector<String> keys = { ";", " " };
+		const Vector<int> mk = s.split_ints_mk(keys);
+		CHECK(mk.size() == 3);
+		for (int i = 0; i < mk.size(); i++) {
+			CHECK(mk[i] == slices[i]);
+		}
 	}
 }
 
@@ -1581,7 +1620,7 @@ TEST_CASE("[String] Path functions") {
 	static const char *base_name[8] = { "C:\\Godot\\project\\test", "/Godot/project/test", "../Godot/project/test", "Godot\\test", "C:\\test", "res://test", "user://test", "/" };
 	static const char *ext[8] = { "tscn", "xscn", "scn", "doc", "", "", "", "test" };
 	static const char *file[8] = { "test.tscn", "test.xscn", "test.scn", "test.doc", "test.", "test", "test", ".test" };
-	static const char *simplified[8] = { "C:/Godot/project/test.tscn", "/Godot/project/test.xscn", "Godot/project/test.scn", "Godot/test.doc", "C:/test.", "res://test", "user://test", "/.test" };
+	static const char *simplified[8] = { "C:/Godot/project/test.tscn", "/Godot/project/test.xscn", "../Godot/project/test.scn", "Godot/test.doc", "C:/test.", "res://test", "user://test", "/.test" };
 	static const bool abs[8] = { true, true, false, false, true, true, true, true };
 
 	for (int i = 0; i < 8; i++) {

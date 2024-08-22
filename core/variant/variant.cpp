@@ -30,7 +30,6 @@
 
 #include "variant.h"
 
-#include "core/core_string_names.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/io/json.h"
 #include "core/io/marshalls.h"
@@ -952,7 +951,7 @@ bool Variant::is_zero() const {
 			return *reinterpret_cast<const ::RID *>(_data._mem) == ::RID();
 		}
 		case OBJECT: {
-			return get_validated_object() == nullptr;
+			return _get_obj().obj == nullptr;
 		}
 		case CALLABLE: {
 			return reinterpret_cast<const Callable *>(_data._mem)->is_null();
@@ -2121,7 +2120,7 @@ Variant::operator ::RID() const {
 		}
 #endif
 		Callable::CallError ce;
-		Variant ret = _get_obj().obj->callp(CoreStringNames::get_singleton()->get_rid, nullptr, 0, ce);
+		Variant ret = _get_obj().obj->callp(CoreStringName(get_rid), nullptr, 0, ce);
 		if (ce.error == Callable::CallError::CALL_OK && ret.get_type() == Variant::RID) {
 			return ret;
 		}

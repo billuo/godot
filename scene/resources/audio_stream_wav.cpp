@@ -465,6 +465,22 @@ void AudioStreamPlaybackWAV::tag_used_streams() {
 	base->tag_used(get_playback_position());
 }
 
+void AudioStreamPlaybackWAV::set_is_sample(bool p_is_sample) {
+	_is_sample = p_is_sample;
+}
+
+bool AudioStreamPlaybackWAV::get_is_sample() const {
+	return _is_sample;
+}
+
+Ref<AudioSamplePlayback> AudioStreamPlaybackWAV::get_sample_playback() const {
+	return sample_playback;
+}
+
+void AudioStreamPlaybackWAV::set_sample_playback(const Ref<AudioSamplePlayback> &p_playback) {
+	sample_playback = p_playback;
+}
+
 AudioStreamPlaybackWAV::AudioStreamPlaybackWAV() {}
 
 AudioStreamPlaybackWAV::~AudioStreamPlaybackWAV() {
@@ -542,7 +558,7 @@ double AudioStreamWAV::get_length() const {
 			break;
 		case AudioStreamWAV::FORMAT_QOA:
 			qoa_desc desc = { 0, 0, 0, { { { 0 }, { 0 } } } };
-			qoa_decode_header((uint8_t *)data + DATA_PAD, QOA_MIN_FILESIZE, &desc);
+			qoa_decode_header((uint8_t *)data + DATA_PAD, data_bytes, &desc);
 			len = desc.samples * desc.channels;
 	}
 
@@ -681,7 +697,8 @@ Ref<AudioStreamPlayback> AudioStreamWAV::instantiate_playback() {
 
 	if (format == AudioStreamWAV::FORMAT_QOA) {
 		sample->qoa.desc = (qoa_desc *)memalloc(sizeof(qoa_desc));
-		qoa_decode_header((uint8_t *)data + DATA_PAD, QOA_MIN_FILESIZE, sample->qoa.desc);
+		uint32_t ffp = qoa_decode_header((uint8_t *)data + DATA_PAD, data_bytes, sample->qoa.desc);
+		ERR_FAIL_COND_V(ffp != 8, Ref<AudioStreamPlaybackWAV>());
 		sample->qoa.frame_len = qoa_max_frame_size(sample->qoa.desc);
 		int samples_len = (sample->qoa.desc->samples > QOA_FRAME_LEN ? QOA_FRAME_LEN : sample->qoa.desc->samples);
 		int alloc_len = sample->qoa.desc->channels * samples_len * sizeof(int16_t);
@@ -693,6 +710,33 @@ Ref<AudioStreamPlayback> AudioStreamWAV::instantiate_playback() {
 
 String AudioStreamWAV::get_stream_name() const {
 	return "";
+}
+
+Ref<AudioSample> AudioStreamWAV::generate_sample() const {
+	Ref<AudioSample> sample;
+	sample.instantiate();
+	sample->stream = this;
+	switch (loop_mode) {
+		case AudioStreamWAV::LoopMode::LOOP_DISABLED: {
+			sample->loop_mode = AudioSample::LoopMode::LOOP_DISABLED;
+		} break;
+
+		case AudioStreamWAV::LoopMode::LOOP_FORWARD: {
+			sample->loop_mode = AudioSample::LoopMode::LOOP_FORWARD;
+		} break;
+
+		case AudioStreamWAV::LoopMode::LOOP_PINGPONG: {
+			sample->loop_mode = AudioSample::LoopMode::LOOP_PINGPONG;
+		} break;
+
+		case AudioStreamWAV::LoopMode::LOOP_BACKWARD: {
+			sample->loop_mode = AudioSample::LoopMode::LOOP_BACKWARD;
+		} break;
+	}
+	sample->loop_begin = loop_begin;
+	sample->loop_end = loop_end;
+	sample->sample_rate = mix_rate;
+	return sample;
 }
 
 void AudioStreamWAV::_bind_methods() {

@@ -154,11 +154,11 @@ void EditorExportPlatformWeb::_fix_html(Vector<uint8_t> &p_html, const Ref<Edito
 
 	String head_include;
 	if (p_preset->get("html/export_icon")) {
-		head_include += "<link id='-gd-engine-icon' rel='icon' type='image/png' href='" + p_name + ".icon.png' />\n";
-		head_include += "<link rel='apple-touch-icon' href='" + p_name + ".apple-touch-icon.png'/>\n";
+		head_include += "<link id=\"-gd-engine-icon\" rel=\"icon\" type=\"image/png\" href=\"" + p_name + ".icon.png\" />\n";
+		head_include += "<link rel=\"apple-touch-icon\" href=\"" + p_name + ".apple-touch-icon.png\"/>\n";
 	}
 	if (p_preset->get("progressive_web_app/enabled")) {
-		head_include += "<link rel='manifest' href='" + p_name + ".manifest.json'>\n";
+		head_include += "<link rel=\"manifest\" href=\"" + p_name + ".manifest.json\">\n";
 		config["serviceWorker"] = p_name + ".service.worker.js";
 	}
 
@@ -242,6 +242,7 @@ Error EditorExportPlatformWeb::_build_pwa(const Ref<EditorExportPreset> &p_prese
 	}
 	cache_files.push_back(name + ".worker.js");
 	cache_files.push_back(name + ".audio.worklet.js");
+	cache_files.push_back(name + ".audio.position.worklet.js");
 	replaces["___GODOT_CACHE___"] = Variant(cache_files).to_json_string();
 
 	// Heavy files that are cached on demand.
@@ -334,9 +335,13 @@ void EditorExportPlatformWeb::get_preset_features(const Ref<EditorExportPreset> 
 	if (p_preset->get("vram_texture_compression/for_desktop")) {
 		r_features->push_back("s3tc");
 	}
-
 	if (p_preset->get("vram_texture_compression/for_mobile")) {
 		r_features->push_back("etc2");
+	}
+	if (p_preset->get("variant/thread_support").operator bool()) {
+		r_features->push_back("threads");
+	} else {
+		r_features->push_back("nothreads");
 	}
 	r_features->push_back("wasm32");
 }
@@ -345,8 +350,8 @@ void EditorExportPlatformWeb::get_export_options(List<ExportOption> *r_options) 
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/debug", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "custom_template/release", PROPERTY_HINT_GLOBAL_FILE, "*.zip"), ""));
 
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "variant/extensions_support"), false)); // Export type.
-	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "variant/thread_support"), true)); // Thread support (i.e. run with or without COEP/COOP headers).
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "variant/extensions_support"), false)); // GDExtension support.
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "variant/thread_support"), false)); // Thread support (i.e. run with or without COEP/COOP headers).
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_desktop"), true)); // S3TC
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "vram_texture_compression/for_mobile"), false)); // ETC or ETC2, depending on renderer
 
@@ -585,32 +590,50 @@ bool EditorExportPlatformWeb::poll_export() {
 		}
 	}
 
-	HTTPServerState prev_server_state = server_state;
-	server_state = HTTP_SERVER_STATE_OFF;
-	if (server->is_listening()) {
-		if (preset.is_null()) {
-			server->stop();
-		} else {
-			server_state = HTTP_SERVER_STATE_ON;
+	RemoteDebugState prev_remote_debug_state = remote_debug_state;
+	remote_debug_state = REMOTE_DEBUG_STATE_UNAVAILABLE;
+
+	if (preset.is_valid()) {
+		const bool debug = true;
+		// Throwaway variables to pass to `can_export`.
+		String err;
+		bool missing_templates;
+
+		if (can_export(preset, err, missing_templates, debug)) {
+			if (server->is_listening()) {
+				remote_debug_state = REMOTE_DEBUG_STATE_SERVING;
+			} else {
+				remote_debug_state = REMOTE_DEBUG_STATE_AVAILABLE;
+			}
 		}
 	}
 
-	return server_state != prev_server_state;
+	if (remote_debug_state != REMOTE_DEBUG_STATE_SERVING && server->is_listening()) {
+		server->stop();
+	}
+
+	return remote_debug_state != prev_remote_debug_state;
 }
 
 Ref<ImageTexture> EditorExportPlatformWeb::get_option_icon(int p_index) const {
 	Ref<ImageTexture> play_icon = EditorExportPlatform::get_option_icon(p_index);
 
-	switch (server_state) {
-		case HTTP_SERVER_STATE_OFF: {
+	switch (remote_debug_state) {
+		case REMOTE_DEBUG_STATE_UNAVAILABLE: {
+			return nullptr;
+		} break;
+
+		case REMOTE_DEBUG_STATE_AVAILABLE: {
 			switch (p_index) {
 				case 0:
 				case 1:
 					return play_icon;
+				default:
+					ERR_FAIL_V(nullptr);
 			}
 		} break;
 
-		case HTTP_SERVER_STATE_ON: {
+		case REMOTE_DEBUG_STATE_SERVING: {
 			switch (p_index) {
 				case 0:
 					return play_icon;
@@ -618,18 +641,31 @@ Ref<ImageTexture> EditorExportPlatformWeb::get_option_icon(int p_index) const {
 					return restart_icon;
 				case 2:
 					return stop_icon;
+				default:
+					ERR_FAIL_V(nullptr);
 			}
 		} break;
 	}
 
-	ERR_FAIL_V_MSG(nullptr, vformat(R"(EditorExportPlatformWeb option icon index "%s" is invalid.)", p_index));
+	return nullptr;
 }
 
 int EditorExportPlatformWeb::get_options_count() const {
-	if (server_state == HTTP_SERVER_STATE_ON) {
-		return 3;
+	switch (remote_debug_state) {
+		case REMOTE_DEBUG_STATE_UNAVAILABLE: {
+			return 0;
+		} break;
+
+		case REMOTE_DEBUG_STATE_AVAILABLE: {
+			return 2;
+		} break;
+
+		case REMOTE_DEBUG_STATE_SERVING: {
+			return 3;
+		} break;
 	}
-	return 2;
+
+	return 0;
 }
 
 String EditorExportPlatformWeb::get_option_label(int p_index) const {
@@ -638,17 +674,22 @@ String EditorExportPlatformWeb::get_option_label(int p_index) const {
 	String reexport_project = TTR("Re-export Project");
 	String stop_http_server = TTR("Stop HTTP Server");
 
-	switch (server_state) {
-		case HTTP_SERVER_STATE_OFF: {
+	switch (remote_debug_state) {
+		case REMOTE_DEBUG_STATE_UNAVAILABLE:
+			return "";
+
+		case REMOTE_DEBUG_STATE_AVAILABLE: {
 			switch (p_index) {
 				case 0:
 					return run_in_browser;
 				case 1:
 					return start_http_server;
+				default:
+					ERR_FAIL_V("");
 			}
 		} break;
 
-		case HTTP_SERVER_STATE_ON: {
+		case REMOTE_DEBUG_STATE_SERVING: {
 			switch (p_index) {
 				case 0:
 					return run_in_browser;
@@ -656,11 +697,13 @@ String EditorExportPlatformWeb::get_option_label(int p_index) const {
 					return reexport_project;
 				case 2:
 					return stop_http_server;
+				default:
+					ERR_FAIL_V("");
 			}
 		} break;
 	}
 
-	ERR_FAIL_V_MSG("", vformat(R"(EditorExportPlatformWeb option label index "%s" is invalid.)", p_index));
+	return "";
 }
 
 String EditorExportPlatformWeb::get_option_tooltip(int p_index) const {
@@ -669,17 +712,22 @@ String EditorExportPlatformWeb::get_option_tooltip(int p_index) const {
 	String reexport_project = TTR("Export project again to account for updates.");
 	String stop_http_server = TTR("Stop the HTTP server.");
 
-	switch (server_state) {
-		case HTTP_SERVER_STATE_OFF: {
+	switch (remote_debug_state) {
+		case REMOTE_DEBUG_STATE_UNAVAILABLE:
+			return "";
+
+		case REMOTE_DEBUG_STATE_AVAILABLE: {
 			switch (p_index) {
 				case 0:
 					return run_in_browser;
 				case 1:
 					return start_http_server;
+				default:
+					ERR_FAIL_V("");
 			}
 		} break;
 
-		case HTTP_SERVER_STATE_ON: {
+		case REMOTE_DEBUG_STATE_SERVING: {
 			switch (p_index) {
 				case 0:
 					return run_in_browser;
@@ -687,11 +735,13 @@ String EditorExportPlatformWeb::get_option_tooltip(int p_index) const {
 					return reexport_project;
 				case 2:
 					return stop_http_server;
+				default:
+					ERR_FAIL_V("");
 			}
 		} break;
 	}
 
-	ERR_FAIL_V_MSG("", vformat(R"(EditorExportPlatformWeb option tooltip index "%s" is invalid.)", p_index));
+	return "";
 }
 
 Error EditorExportPlatformWeb::run(const Ref<EditorExportPreset> &p_preset, int p_option, int p_debug_flags) {
@@ -700,8 +750,12 @@ Error EditorExportPlatformWeb::run(const Ref<EditorExportPreset> &p_preset, int 
 	const String bind_host = EDITOR_GET("export/web/http_host");
 	const bool use_tls = EDITOR_GET("export/web/use_tls");
 
-	switch (server_state) {
-		case HTTP_SERVER_STATE_OFF: {
+	switch (remote_debug_state) {
+		case REMOTE_DEBUG_STATE_UNAVAILABLE: {
+			return FAILED;
+		} break;
+
+		case REMOTE_DEBUG_STATE_AVAILABLE: {
 			switch (p_option) {
 				// Run in Browser.
 				case 0: {
@@ -724,10 +778,14 @@ Error EditorExportPlatformWeb::run(const Ref<EditorExportPreset> &p_preset, int 
 					}
 					return _start_server(bind_host, bind_port, use_tls);
 				} break;
+
+				default: {
+					ERR_FAIL_V_MSG(FAILED, vformat(R"(Invalid option "%s" for the current state.)", p_option));
+				}
 			}
 		} break;
 
-		case HTTP_SERVER_STATE_ON: {
+		case REMOTE_DEBUG_STATE_SERVING: {
 			switch (p_option) {
 				// Run in Browser.
 				case 0: {
@@ -747,11 +805,15 @@ Error EditorExportPlatformWeb::run(const Ref<EditorExportPreset> &p_preset, int 
 				case 2: {
 					return _stop_server();
 				} break;
+
+				default: {
+					ERR_FAIL_V_MSG(FAILED, vformat(R"(Invalid option "%s" for the current state.)", p_option));
+				}
 			}
 		} break;
 	}
 
-	ERR_FAIL_V_MSG(ERR_INVALID_PARAMETER, vformat(R"(Trying to run EditorExportPlatformWeb, but option "%s" isn't known.)", p_option));
+	return FAILED;
 }
 
 Error EditorExportPlatformWeb::_export_project(const Ref<EditorExportPreset> &p_preset, int p_debug_flags) {
@@ -774,6 +836,7 @@ Error EditorExportPlatformWeb::_export_project(const Ref<EditorExportPreset> &p_
 		DirAccess::remove_file_or_error(basepath + ".js");
 		DirAccess::remove_file_or_error(basepath + ".worker.js");
 		DirAccess::remove_file_or_error(basepath + ".audio.worklet.js");
+		DirAccess::remove_file_or_error(basepath + ".audio.position.worklet.js");
 		DirAccess::remove_file_or_error(basepath + ".service.worker.js");
 		DirAccess::remove_file_or_error(basepath + ".pck");
 		DirAccess::remove_file_or_error(basepath + ".png");

@@ -262,6 +262,8 @@ public:
 	void viewport_set_transparent_background(RID p_viewport, bool p_enabled);
 	void viewport_set_use_hdr_2d(RID p_viewport, bool p_use_hdr_2d);
 
+	bool viewport_is_using_hdr_2d(RID p_viewport) const;
+
 	void viewport_set_global_canvas_transform(RID p_viewport, const Transform2D &p_transform);
 	void viewport_set_canvas_stacking(RID p_viewport, RID p_canvas, int p_layer, int p_sublayer);
 
@@ -303,7 +305,6 @@ public:
 
 	void handle_timestamp(String p_timestamp, uint64_t p_cpu_time, uint64_t p_gpu_time);
 
-	void set_default_clear_color(const Color &p_color);
 	void draw_viewports(bool p_swap_buffers);
 
 	bool free(RID p_rid);

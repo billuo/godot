@@ -31,7 +31,6 @@
 #include "object.h"
 #include "object.compat.inc"
 
-#include "core/core_string_names.h"
 #include "core/extension/gdextension_manager.h"
 #include "core/io/resource.h"
 #include "core/object/class_db.h"
@@ -39,7 +38,7 @@
 #include "core/object/script_language.h"
 #include "core/os/os.h"
 #include "core/string/print_string.h"
-#include "core/string/translation.h"
+#include "core/string/translation_server.h"
 #include "core/templates/local_vector.h"
 #include "core/variant/typed_array.h"
 
@@ -237,20 +236,12 @@ void Object::set(const StringName &p_name, const Variant &p_value, bool *r_valid
 	}
 
 	if (_extension && _extension->set) {
-// C style pointer casts should never trigger a compiler warning because the risk is assumed by the user, so GCC should keep quiet about it.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#endif
-		if (_extension->set(_extension_instance, (const GDExtensionStringNamePtr)&p_name, (const GDExtensionVariantPtr)&p_value)) {
+		if (_extension->set(_extension_instance, (GDExtensionConstStringNamePtr)&p_name, (GDExtensionConstVariantPtr)&p_value)) {
 			if (r_valid) {
 				*r_valid = true;
 			}
 			return;
 		}
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 	}
 
 	// Try built-in setter.
@@ -260,7 +251,7 @@ void Object::set(const StringName &p_name, const Variant &p_value, bool *r_valid
 		}
 	}
 
-	if (p_name == CoreStringNames::get_singleton()->_script) {
+	if (p_name == CoreStringName(script)) {
 		set_script(p_value);
 		if (r_valid) {
 			*r_valid = true;
@@ -324,21 +315,12 @@ Variant Object::get(const StringName &p_name, bool *r_valid) const {
 		}
 	}
 	if (_extension && _extension->get) {
-// C style pointer casts should never trigger a compiler warning because the risk is assumed by the user, so GCC should keep quiet about it.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#endif
-
-		if (_extension->get(_extension_instance, (const GDExtensionStringNamePtr)&p_name, (GDExtensionVariantPtr)&ret)) {
+		if (_extension->get(_extension_instance, (GDExtensionConstStringNamePtr)&p_name, (GDExtensionVariantPtr)&ret)) {
 			if (r_valid) {
 				*r_valid = true;
 			}
 			return ret;
 		}
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 	}
 
 	// Try built-in getter.
@@ -351,7 +333,7 @@ Variant Object::get(const StringName &p_name, bool *r_valid) const {
 		}
 	}
 
-	if (p_name == CoreStringNames::get_singleton()->_script) {
+	if (p_name == CoreStringName(script)) {
 		ret = get_script();
 		if (r_valid) {
 			*r_valid = true;
@@ -576,19 +558,11 @@ bool Object::property_can_revert(const StringName &p_name) const {
 		}
 	}
 
-// C style pointer casts should never trigger a compiler warning because the risk is assumed by the user, so GCC should keep quiet about it.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#endif
 	if (_extension && _extension->property_can_revert) {
-		if (_extension->property_can_revert(_extension_instance, (const GDExtensionStringNamePtr)&p_name)) {
+		if (_extension->property_can_revert(_extension_instance, (GDExtensionConstStringNamePtr)&p_name)) {
 			return true;
 		}
 	}
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 
 	return _property_can_revertv(p_name);
 }
@@ -602,19 +576,11 @@ Variant Object::property_get_revert(const StringName &p_name) const {
 		}
 	}
 
-// C style pointer casts should never trigger a compiler warning because the risk is assumed by the user, so GCC should keep quiet about it.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#endif
 	if (_extension && _extension->property_get_revert) {
-		if (_extension->property_get_revert(_extension_instance, (const GDExtensionStringNamePtr)&p_name, (GDExtensionVariantPtr)&ret)) {
+		if (_extension->property_get_revert(_extension_instance, (GDExtensionConstStringNamePtr)&p_name, (GDExtensionVariantPtr)&ret)) {
 			return ret;
 		}
 	}
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 
 	if (_property_get_revertv(p_name, ret)) {
 		return ret;
@@ -672,7 +638,7 @@ Variant Object::_call_deferred_bind(const Variant **p_args, int p_argcount, Call
 }
 
 bool Object::has_method(const StringName &p_method) const {
-	if (p_method == CoreStringNames::get_singleton()->_free) {
+	if (p_method == CoreStringName(free_)) {
 		return true;
 	}
 
@@ -698,7 +664,7 @@ int Object::_get_method_argument_count_bind(const StringName &p_method) const {
 }
 
 int Object::get_method_argument_count(const StringName &p_method, bool *r_is_valid) const {
-	if (p_method == CoreStringNames::get_singleton()->_free) {
+	if (p_method == CoreStringName(free_)) {
 		if (r_is_valid) {
 			*r_is_valid = true;
 		}
@@ -787,7 +753,7 @@ Variant Object::callv(const StringName &p_method, const Array &p_args) {
 Variant Object::callp(const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error) {
 	r_error.error = Callable::CallError::CALL_OK;
 
-	if (p_method == CoreStringNames::get_singleton()->_free) {
+	if (p_method == CoreStringName(free_)) {
 //free must be here, before anything, always ready
 #ifdef DEBUG_ENABLED
 		if (p_argcount != 0) {
@@ -797,7 +763,7 @@ Variant Object::callp(const StringName &p_method, const Variant **p_args, int p_
 		}
 		if (is_ref_counted()) {
 			r_error.error = Callable::CallError::CALL_ERROR_INVALID_METHOD;
-			ERR_FAIL_V_MSG(Variant(), "Can't 'free' a reference.");
+			ERR_FAIL_V_MSG(Variant(), "Can't free a RefCounted object.");
 		}
 
 		if (_lock_index.get() > 1) {
@@ -850,7 +816,7 @@ Variant Object::callp(const StringName &p_method, const Variant **p_args, int p_
 Variant Object::call_const(const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error) {
 	r_error.error = Callable::CallError::CALL_OK;
 
-	if (p_method == CoreStringNames::get_singleton()->_free) {
+	if (p_method == CoreStringName(free_)) {
 		// Free is not const, so fail.
 		r_error.error = Callable::CallError::CALL_ERROR_METHOD_NOT_CONST;
 		return Variant();
@@ -924,6 +890,7 @@ void Object::notification(int p_notification, bool p_reversed) {
 }
 
 String Object::to_string() {
+	// Keep this method in sync with `Node::to_string`.
 	if (script_instance) {
 		bool valid;
 		String ret = script_instance->to_string(&valid);
@@ -979,7 +946,7 @@ void Object::set_script(const Variant &p_script) {
 	}
 
 	notify_property_list_changed(); //scripts may add variables, so refresh is desired
-	emit_signal(CoreStringNames::get_singleton()->script_changed);
+	emit_signal(CoreStringName(script_changed));
 }
 
 void Object::set_script_instance(ScriptInstance *p_instance) {
@@ -1654,7 +1621,7 @@ void Object::clear_internal_resource_paths() {
 }
 
 void Object::notify_property_list_changed() {
-	emit_signal(CoreStringNames::get_singleton()->property_list_changed);
+	emit_signal(CoreStringName(property_list_changed));
 }
 
 void Object::_bind_methods() {
@@ -2095,9 +2062,13 @@ Object::~Object() {
 		_extension_instance = nullptr;
 	}
 #ifdef TOOLS_ENABLED
-	else if (_instance_bindings != nullptr && Engine::get_singleton()->is_extension_reloading_enabled()) {
-		for (uint32_t i = 0; i < _instance_binding_count; i++) {
-			GDExtensionManager::get_singleton()->untrack_instance_binding(_instance_bindings[i].token, this);
+	else if (_instance_bindings != nullptr) {
+		Engine *engine = Engine::get_singleton();
+		GDExtensionManager *gdextension_manager = GDExtensionManager::get_singleton();
+		if (engine && gdextension_manager && engine->is_extension_reloading_enabled()) {
+			for (uint32_t i = 0; i < _instance_binding_count; i++) {
+				gdextension_manager->untrack_instance_binding(_instance_bindings[i].token, this);
+			}
 		}
 	}
 #endif
@@ -2126,7 +2097,11 @@ Object::~Object() {
 	// Disconnect signals that connect to this object.
 	while (connections.size()) {
 		Connection c = connections.front()->get();
-		bool disconnected = c.signal.get_object()->_disconnect(c.signal.get_name(), c.callable, true);
+		Object *obj = c.callable.get_object();
+		bool disconnected = false;
+		if (likely(obj)) {
+			disconnected = c.signal.get_object()->_disconnect(c.signal.get_name(), c.callable, true);
+		}
 		if (unlikely(!disconnected)) {
 			// If the disconnect has failed, abandon the connection to avoid getting trapped in an infinite loop here.
 			connections.pop_front();
@@ -2307,9 +2282,9 @@ void ObjectDB::setup() {
 }
 
 void ObjectDB::cleanup() {
-	if (slot_count > 0) {
-		spin_lock.lock();
+	spin_lock.lock();
 
+	if (slot_count > 0) {
 		WARN_PRINT("ObjectDB instances leaked at exit (run with --verbose for details).");
 		if (OS::get_singleton()->is_stdout_verbose()) {
 			// Ensure calling the native classes because if a leaked instance has a script
@@ -2340,10 +2315,11 @@ void ObjectDB::cleanup() {
 			}
 			print_line("Hint: Leaked instances typically happen when nodes are removed from the scene tree (with `remove_child()`) but not freed (with `free()` or `queue_free()`).");
 		}
-		spin_lock.unlock();
 	}
 
 	if (object_slots) {
 		memfree(object_slots);
 	}
+
+	spin_lock.unlock();
 }
