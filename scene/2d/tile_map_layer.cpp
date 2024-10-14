@@ -1372,7 +1372,7 @@ void TileMapLayer::_build_runtime_update_tile_data(bool p_force_cleanup) {
 }
 
 void TileMapLayer::_build_runtime_update_tile_data_for_cell(CellData &r_cell_data, bool p_use_tilemap_for_runtime, bool p_auto_add_to_dirty_list) {
-	TileMapCell &c = r_cell_data.cell;
+	const TileMapCell &c = r_cell_data.cell;
 	TileSetSource *source;
 	if (tile_set->has_source(c.source_id)) {
 		source = *tile_set->get_source(c.source_id);
@@ -1672,12 +1672,18 @@ void TileMapLayer::_internal_update(bool p_force_cleanup) {
 
 	// List the cells to delete definitely.
 	Vector<Vector2i> to_delete;
+	Array dirty_cells;
 	for (SelfList<CellData> *cell_data_list_element = dirty.cell_list.first(); cell_data_list_element; cell_data_list_element = cell_data_list_element->next()) {
 		CellData &cell_data = *cell_data_list_element->self();
 		// Select the cell from tile_map if it is invalid.
 		if (cell_data.cell.source_id == TileSet::INVALID_SOURCE) {
 			to_delete.push_back(cell_data.coords);
 		}
+		dirty_cells.push_back(cell_data.coords);
+	}
+
+	if (is_inside_tree() && !dirty_cells.is_empty()) {
+		emit_signal(SNAME("cells_updated"), dirty_cells);
 	}
 
 	// Remove cells that are empty after the cleanup.
@@ -1851,6 +1857,7 @@ void TileMapLayer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "navigation_visibility_mode", PROPERTY_HINT_ENUM, "Default,Force Show,Force Hide"), "set_navigation_visibility_mode", "get_navigation_visibility_mode");
 
 	ADD_SIGNAL(MethodInfo(CoreStringName(changed)));
+	ADD_SIGNAL(MethodInfo("cells_updated", PropertyInfo(Variant::ARRAY, "coords")));
 
 	ADD_PROPERTY_DEFAULT("tile_map_data_format", TileMapDataFormat::TILE_MAP_DATA_FORMAT_1);
 
@@ -2218,11 +2225,10 @@ HashMap<Vector2i, TileSet::TerrainsPattern> TileMapLayer::terrain_fill_pattern(c
 }
 
 TileMapCell TileMapLayer::get_cell(const Vector2i &p_coords) const {
-	if (!tile_map_layer_data.has(p_coords)) {
-		return TileMapCell();
-	} else {
-		return tile_map_layer_data.find(p_coords)->value.cell;
+	if (HashMap<Vector2i, CellData>::ConstIterator it = tile_map_layer_data.find(p_coords)) {
+		return it->value.cell;
 	}
+	return TileMapCell();
 }
 
 void TileMapLayer::draw_tile(RID p_canvas_item, const Vector2 &p_position, const Ref<TileSet> p_tile_set, int p_atlas_source_id, const Vector2i &p_atlas_coords, int p_alternative_tile, int p_frame, Color p_modulation, const TileData *p_tile_data_override, real_t p_normalized_animation_offset) {
@@ -2319,8 +2325,8 @@ void TileMapLayer::set_cell(const Vector2i &p_coords, int p_source_id, const Vec
 	Vector2i atlas_coords = p_atlas_coords;
 	int alternative_tile = p_alternative_tile;
 
-	if ((source_id == TileSet::INVALID_SOURCE || atlas_coords == TileSetSource::INVALID_ATLAS_COORDS || alternative_tile == TileSetSource::INVALID_TILE_ALTERNATIVE) &&
-			(source_id != TileSet::INVALID_SOURCE || atlas_coords != TileSetSource::INVALID_ATLAS_COORDS || alternative_tile != TileSetSource::INVALID_TILE_ALTERNATIVE)) {
+	// ensure either all invalid or none invalid
+	if (source_id == TileSet::INVALID_SOURCE || atlas_coords == TileSetSource::INVALID_ATLAS_COORDS || alternative_tile == TileSetSource::INVALID_TILE_ALTERNATIVE) {
 		source_id = TileSet::INVALID_SOURCE;
 		atlas_coords = TileSetSource::INVALID_ATLAS_COORDS;
 		alternative_tile = TileSetSource::INVALID_TILE_ALTERNATIVE;
@@ -2352,7 +2358,15 @@ void TileMapLayer::set_cell(const Vector2i &p_coords, int p_source_id, const Vec
 	}
 	_queue_internal_update();
 
-	used_rect_cache_dirty = true;
+	if (!used_rect_cache_dirty) {
+		const bool used_rect_has_point = used_rect_cache.has_point(pk);
+		if (source_id == TileSet::INVALID_SOURCE && used_rect_has_point) {
+			used_rect_cache_dirty = true;
+		}
+		if (source_id != TileSet::INVALID_SOURCE && !used_rect_has_point) {
+			used_rect_cache_dirty = true;
+		}
+	}
 }
 
 void TileMapLayer::erase_cell(const Vector2i &p_coords) {
