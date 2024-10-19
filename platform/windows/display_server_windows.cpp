@@ -1228,6 +1228,7 @@ typedef struct {
 	int count;
 	int screen;
 	Rect2i rect;
+	bool use_work_area;
 } EnumRectData;
 
 typedef struct {
@@ -1269,10 +1270,17 @@ static BOOL CALLBACK _MonitorEnumProcUsableSize(HMONITOR hMonitor, HDC hdcMonito
 		minfo.cbSize = sizeof(MONITORINFO);
 		GetMonitorInfoA(hMonitor, &minfo);
 
-		data->rect.position.x = minfo.rcWork.left;
-		data->rect.position.y = minfo.rcWork.top;
-		data->rect.size.x = minfo.rcWork.right - minfo.rcWork.left;
-		data->rect.size.y = minfo.rcWork.bottom - minfo.rcWork.top;
+		if (data->use_work_area) {
+			data->rect.position.x = minfo.rcWork.left;
+			data->rect.position.y = minfo.rcWork.top;
+			data->rect.size.x = minfo.rcWork.right - minfo.rcWork.left;
+			data->rect.size.y = minfo.rcWork.bottom - minfo.rcWork.top;
+		} else {
+			data->rect.position.x = minfo.rcMonitor.left;
+			data->rect.position.y = minfo.rcMonitor.top;
+			data->rect.size.x = minfo.rcMonitor.right - minfo.rcMonitor.left;
+			data->rect.size.y = minfo.rcMonitor.bottom - minfo.rcMonitor.top;
+		}
 	}
 
 	data->count++;
@@ -1320,11 +1328,16 @@ static BOOL CALLBACK _MonitorEnumProcRefreshRate(HMONITOR hMonitor, HDC hdcMonit
 Rect2i DisplayServerWindows::screen_get_usable_rect(int p_screen) const {
 	_THREAD_SAFE_METHOD_
 
+	bool fullscreen = false;
+	if (windows.has(MAIN_WINDOW_ID)) {
+		fullscreen = windows[MAIN_WINDOW_ID].fullscreen;
+	}
+
 	p_screen = _get_screen_index(p_screen);
 	int screen_count = get_screen_count();
 	ERR_FAIL_INDEX_V(p_screen, screen_count, Rect2i());
 
-	EnumRectData data = { 0, p_screen, Rect2i() };
+	EnumRectData data = { 0, p_screen, Rect2i(), !fullscreen };
 	EnumDisplayMonitors(nullptr, nullptr, _MonitorEnumProcUsableSize, (LPARAM)&data);
 	data.rect.position -= _get_screens_origin();
 	return data.rect;
