@@ -2152,7 +2152,6 @@ void DisplayServerWindows::window_set_mode(WindowMode p_mode, WindowID p_window)
 			rect.right = wd.width;
 			rect.top = 0;
 			rect.bottom = wd.height;
-			wd.pre_fs_valid = true;
 		}
 
 		ShowWindow(wd.hWnd, SW_RESTORE);
@@ -2196,9 +2195,8 @@ void DisplayServerWindows::window_set_mode(WindowMode p_mode, WindowID p_window)
 		}
 		wd.was_maximized = wd.maximized;
 
-		if (wd.pre_fs_valid) {
-			GetWindowRect(wd.hWnd, &wd.pre_fs_rect);
-		}
+		GetWindowRect(wd.hWnd, &wd.pre_fs_rect);
+		wd.pre_fs_valid = true;
 
 		int cs = window_get_current_screen(p_window);
 		Point2 pos = screen_get_position(cs) + _get_screens_origin();
@@ -5610,9 +5608,6 @@ DisplayServer::WindowID DisplayServerWindows::_create_window(WindowMode p_mode, 
 			if (p_mode == WINDOW_MODE_FULLSCREEN) {
 				wd.multiwindow_fs = true;
 			}
-		}
-		if (p_mode != WINDOW_MODE_FULLSCREEN && p_mode != WINDOW_MODE_EXCLUSIVE_FULLSCREEN) {
-			wd.pre_fs_valid = true;
 		}
 
 		wd.exclusive = p_exclusive;
