@@ -47,6 +47,7 @@
 // ***********************************************************************************
 
 #include "core/object/object.h"
+#include "core/templates/paged_allocator.h"
 #include "core/variant/type_info.h"
 #include "servers/display_server.h"
 #include "servers/rendering/rendering_context_driver.h"
