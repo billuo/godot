@@ -33,7 +33,6 @@
 
 #include "core/object/method_bind.h"
 #include "core/object/object.h"
-#include "core/os/rw_lock.h"
 #include "core/templates/hash_set.h"
 
 // Makes callable_mp readily available in all classes connecting signals.
@@ -145,7 +144,6 @@ public:
 		return memnew(T);
 	}
 
-	static RWLock lock;
 	static HashMap<StringName, ClassInfo> classes;
 	static HashMap<StringName, StringName> resource_base_extensions;
 	static HashMap<StringName, StringName> compat_classes;

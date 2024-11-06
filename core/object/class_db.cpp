@@ -33,11 +33,12 @@
 #include "core/config/engine.h"
 #include "core/io/resource_loader.h"
 #include "core/object/script_language.h"
-#include "core/os/mutex.h"
+#include "core/os/rw_lock.h"
 #include "core/version.h"
 
 #define OBJTYPE_RLOCK RWLockRead _rw_lockr_(lock);
 #define OBJTYPE_WLOCK RWLockWrite _rw_lockw_(lock);
+static RWLock lock;
 
 #ifdef DEBUG_METHODS_ENABLED
 
@@ -2195,8 +2196,6 @@ uint64_t ClassDB::get_native_struct_size(const StringName &p_name) {
 	ERR_FAIL_COND_V(!native_structs.has(p_name), 0);
 	return native_structs[p_name].struct_size;
 }
-
-RWLock ClassDB::lock;
 
 void ClassDB::cleanup_defaults() {
 	default_values.clear();
