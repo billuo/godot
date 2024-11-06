@@ -34,6 +34,7 @@
 #include "../gltf_defines.h"
 
 #include "core/io/resource.h"
+#include "core/templates/rb_map.h"
 #include "scene/3d/bone_attachment_3d.h"
 #include "scene/3d/skeleton_3d.h"
 

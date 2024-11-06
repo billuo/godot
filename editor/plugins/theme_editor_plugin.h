@@ -31,6 +31,7 @@
 #ifndef THEME_EDITOR_PLUGIN_H
 #define THEME_EDITOR_PLUGIN_H
 
+#include "core/templates/rb_map.h"
 #include "editor/plugins/editor_plugin.h"
 #include "editor/plugins/theme_editor_preview.h"
 #include "scene/gui/dialogs.h"

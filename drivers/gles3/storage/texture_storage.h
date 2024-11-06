@@ -37,6 +37,7 @@
 
 #include "config.h"
 #include "core/os/os.h"
+#include "core/templates/rb_map.h"
 #include "core/templates/rid_owner.h"
 #include "servers/rendering/renderer_compositor.h"
 #include "servers/rendering/storage/texture_storage.h"

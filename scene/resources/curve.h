@@ -32,6 +32,7 @@
 #define CURVE_H
 
 #include "core/io/resource.h"
+#include "core/templates/rb_map.h"
 
 // y(x) curve
 class Curve : public Resource {

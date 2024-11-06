@@ -35,6 +35,7 @@
 #include "core/object/object.h"
 #include "core/os/keyboard.h"
 #include "core/os/thread_safe.h"
+#include "core/templates/rb_map.h"
 #include "core/templates/rb_set.h"
 #include "core/variant/typed_array.h"
 

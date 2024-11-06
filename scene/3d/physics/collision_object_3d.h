@@ -31,6 +31,7 @@
 #ifndef COLLISION_OBJECT_3D_H
 #define COLLISION_OBJECT_3D_H
 
+#include "core/templates/rb_map.h"
 #include "scene/3d/camera_3d.h"
 #include "scene/3d/node_3d.h"
 

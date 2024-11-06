@@ -36,6 +36,7 @@
 #include "core/error/error_list.h"
 #include "core/os/os.h"
 #include "core/templates/local_vector.h"
+#include "core/templates/rb_map.h"
 #include "servers/display_server.h"
 
 #include <windows.h>

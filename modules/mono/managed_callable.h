@@ -34,6 +34,7 @@
 #include "mono_gc_handle.h"
 
 #include "core/os/mutex.h"
+#include "core/templates/rb_map.h"
 #include "core/templates/self_list.h"
 #include "core/variant/callable.h"
 

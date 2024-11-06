@@ -31,6 +31,7 @@
 #ifndef GDSCRIPT_BYTE_CODEGEN_H
 #define GDSCRIPT_BYTE_CODEGEN_H
 
+#include "core/templates/rb_map.h"
 #include "gdscript_codegen.h"
 #include "gdscript_function.h"
 #include "gdscript_utility_functions.h"

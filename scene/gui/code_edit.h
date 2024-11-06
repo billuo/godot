@@ -32,6 +32,7 @@
 #define CODE_EDIT_H
 
 #include "core/object/script_language.h"
+#include "core/templates/rb_map.h"
 #include "scene/gui/text_edit.h"
 
 class CodeEdit : public TextEdit {

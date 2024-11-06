@@ -32,6 +32,7 @@
 #define JNI_SINGLETON_H
 
 #include "core/config/engine.h"
+#include "core/templates/rb_map.h"
 #include "core/variant/variant.h"
 
 #ifdef ANDROID_ENABLED

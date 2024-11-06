@@ -32,6 +32,7 @@
 #define JAVA_CLASS_WRAPPER_H
 
 #include "core/object/ref_counted.h"
+#include "core/templates/rb_map.h"
 
 #ifdef ANDROID_ENABLED
 #include <android/log.h>

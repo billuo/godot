@@ -33,6 +33,7 @@
 
 #include "core/io/resource.h"
 #include "core/object/gdvirtual.gen.inc"
+#include "core/templates/rb_map.h"
 
 class TextEdit;
 

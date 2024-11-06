@@ -31,6 +31,7 @@
 #ifndef ANIMATION_TRACK_EDITOR_H
 #define ANIMATION_TRACK_EDITOR_H
 
+#include "core/templates/rb_map.h"
 #include "editor/editor_data.h"
 #include "editor/editor_properties.h"
 #include "editor/property_selector.h"

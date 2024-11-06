@@ -31,6 +31,7 @@
 #ifndef ANIMATION_BLEND_TREE_H
 #define ANIMATION_BLEND_TREE_H
 
+#include "core/templates/rb_map.h"
 #include "scene/animation/animation_tree.h"
 
 class AnimationNodeAnimation : public AnimationRootNode {

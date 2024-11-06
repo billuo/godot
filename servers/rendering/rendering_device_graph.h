@@ -32,6 +32,7 @@
 #define RENDERING_DEVICE_GRAPH_H
 
 #include "core/object/worker_thread_pool.h"
+#include "core/templates/rb_map.h"
 #include "rendering_device_commons.h"
 #include "rendering_device_driver.h"
 

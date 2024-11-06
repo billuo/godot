@@ -32,6 +32,7 @@
 #define VISUAL_SHADER_H
 
 #include "core/string/string_builder.h"
+#include "core/templates/rb_map.h"
 #include "core/templates/safe_refcount.h"
 #include "scene/gui/control.h"
 #include "scene/resources/shader.h"
