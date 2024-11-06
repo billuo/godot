@@ -32,7 +32,7 @@
 #include "animation.compat.inc"
 
 #include "core/io/marshalls.h"
-#include "core/math/geometry_3d.h"
+#include "core/string/print_string.h"
 
 bool Animation::_set(const StringName &p_name, const Variant &p_value) {
 	String prop_name = p_name;

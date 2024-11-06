@@ -34,7 +34,6 @@
 #include "core/debugger/debugger_marshalls.h"
 #include "core/io/json.h"
 #include "editor/debugger/script_editor_debugger.h"
-#include "editor/doc_tools.h"
 #include "editor/editor_log.h"
 #include "editor/editor_node.h"
 #include "editor/editor_settings.h"

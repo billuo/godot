@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "tts_windows.h"
+#include "core/string/print_string.h"
 
 TTS_Windows *TTS_Windows::singleton = nullptr;
 

@@ -30,12 +30,11 @@
 
 #include "crypto_mbedtls.h"
 
-#include "core/config/engine.h"
-#include "core/config/project_settings.h"
 #include "core/io/certs_compressed.gen.h"
 #include "core/io/compression.h"
 #include "core/io/file_access.h"
 #include "core/os/os.h"
+#include "core/string/print_string.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/editor_settings.h"

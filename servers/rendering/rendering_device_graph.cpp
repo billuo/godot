@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "rendering_device_graph.h"
+#include "core/string/print_string.h"
 
 #define PRINT_RENDER_GRAPH 0
 #define FORCE_FULL_ACCESS_BITS 0

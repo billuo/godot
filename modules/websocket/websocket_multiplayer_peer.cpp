@@ -31,6 +31,7 @@
 #include "websocket_multiplayer_peer.h"
 
 #include "core/os/os.h"
+#include "core/string/print_string.h"
 
 WebSocketMultiplayerPeer::WebSocketMultiplayerPeer() {
 	peer_config = Ref<WebSocketPeer>(WebSocketPeer::create());

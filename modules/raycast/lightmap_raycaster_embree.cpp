@@ -31,6 +31,7 @@
 #ifdef TOOLS_ENABLED
 
 #include "lightmap_raycaster_embree.h"
+#include "core/string/print_string.h"
 
 #ifdef __SSE2__
 #include <pmmintrin.h>

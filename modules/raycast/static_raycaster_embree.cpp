@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "static_raycaster_embree.h"
+#include "core/string/print_string.h"
 
 #ifdef TOOLS_ENABLED
 

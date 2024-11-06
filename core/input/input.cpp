@@ -35,6 +35,7 @@
 #include "core/input/default_controller_mappings.h"
 #include "core/input/input_map.h"
 #include "core/os/os.h"
+#include "core/string/print_string.h"
 
 #ifdef DEV_ENABLED
 #include "core/os/thread.h"

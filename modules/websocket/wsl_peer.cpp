@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "wsl_peer.h"
+#include "core/string/print_string.h"
 
 #ifndef WEB_ENABLED
 

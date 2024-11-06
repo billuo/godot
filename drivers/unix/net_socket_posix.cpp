@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "net_socket_posix.h"
+#include "core/string/print_string.h"
 
 // Some proprietary Unix-derived platforms don't expose Unix sockets
 // so this allows skipping this file to reimplement this API differently.

@@ -31,6 +31,7 @@
 #include "image_saver_tinyexr.h"
 
 #include "core/math/math_funcs.h"
+#include "core/string/print_string.h"
 
 #include <zlib.h> // Should come before including tinyexr.
 

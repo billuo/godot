@@ -34,6 +34,7 @@
 #include "core/os/os.h"
 #include "core/os/safe_binary_mutex.h"
 #include "core/os/thread_safe.h"
+#include "core/string/print_string.h"
 
 WorkerThreadPool::Task *const WorkerThreadPool::ThreadData::YIELDING = (Task *)1;
 

@@ -35,6 +35,7 @@
 #include "vk_enum_string_helper.h"
 
 #include "core/config/project_settings.h"
+#include "core/string/print_string.h"
 #include "core/version.h"
 
 #include "rendering_device_driver_vulkan.h"

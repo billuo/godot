@@ -52,6 +52,7 @@
 #include "core/io/file_access.h"
 #include "core/io/file_access_encrypted.h"
 #include "core/os/os.h"
+#include "core/string/print_string.h"
 
 #include "scene/scene_string_names.h"
 

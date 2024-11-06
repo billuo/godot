@@ -32,6 +32,7 @@
 
 #include "core/debugger/script_debugger.h"
 #include "core/os/os.h"
+#include "core/string/print_string.h"
 
 struct LocalDebugger::ScriptsProfiler {
 	struct ProfileInfoSort {

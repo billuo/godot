@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "egl_manager.h"
+#include "core/string/print_string.h"
 
 #ifdef EGL_ENABLED
 

@@ -34,8 +34,8 @@
 
 #include "core/io/resource_loader.h"
 #include "core/object/class_db.h"
-#include "core/object/method_bind.h"
 #include "core/object/object.h"
+#include "core/string/print_string.h"
 #include "core/templates/oa_hash_map.h"
 #include "core/templates/vector.h"
 #include "core/variant/typed_array.h"

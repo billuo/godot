@@ -34,9 +34,9 @@
 #include "macho.h"
 
 #include "core/io/plist.h"
-#include "core/os/os.h"
+#include "core/string/print_string.h"
+#include "core/templates/hash_map.h"
 #include "editor/editor_paths.h"
-#include "editor/editor_settings.h"
 
 #include "modules/modules_enabled.gen.h" // For regex.
 

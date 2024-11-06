@@ -33,6 +33,7 @@
 #if defined(WINDOWS_ENABLED) && defined(GLES3_ENABLED)
 
 #include "core/config/project_settings.h"
+#include "core/string/print_string.h"
 #include "core/version.h"
 
 #include "thirdparty/nvapi/nvapi_minimal.h"

@@ -32,6 +32,7 @@
 
 #include "core/config/project_settings.h"
 #include "core/io/marshalls.h"
+#include "core/string/print_string.h"
 #include "thirdparty/misc/smolv.h"
 #include "vulkan_hooks.h"
 

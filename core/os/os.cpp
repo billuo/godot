@@ -31,11 +31,11 @@
 #include "os.h"
 
 #include "core/config/project_settings.h"
-#include "core/input/input.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/os/midi_driver.h"
+#include "core/string/print_string.h"
 #include "core/version_generated.gen.h"
 
 #include <stdarg.h>

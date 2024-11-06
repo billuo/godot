@@ -33,6 +33,7 @@
 #include "core/config/project_settings.h"
 #include "core/io/marshalls.h"
 #include "core/os/os.h"
+#include "core/string/print_string.h"
 
 bool RemoteDebuggerPeerTCP::is_peer_connected() {
 	return connected;

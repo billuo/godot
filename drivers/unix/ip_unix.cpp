@@ -29,6 +29,7 @@
 /**************************************************************************/
 
 #include "ip_unix.h"
+#include "core/string/print_string.h"
 
 #if defined(UNIX_ENABLED) || defined(WINDOWS_ENABLED)
 
