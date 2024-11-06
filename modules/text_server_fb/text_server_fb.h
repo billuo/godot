@@ -81,6 +81,7 @@ using namespace godot;
 
 #include "core/extension/ext_wrappers.gen.inc"
 #include "core/object/worker_thread_pool.h"
+#include "core/os/thread_safe.h"
 #include "core/templates/hash_map.h"
 #include "core/templates/rid_owner.h"
 #include "scene/resources/image_texture.h"

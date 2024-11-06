@@ -31,6 +31,7 @@
 #ifndef XR_INTERFACE_EXTENSION_H
 #define XR_INTERFACE_EXTENSION_H
 
+#include "core/os/thread_safe.h"
 #include "servers/xr/xr_interface.h"
 
 class XRInterfaceExtension : public XRInterface {

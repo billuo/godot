@@ -31,6 +31,7 @@
 #ifndef XR_BODY_TRACKER_H
 #define XR_BODY_TRACKER_H
 
+#include "core/os/thread_safe.h"
 #include "servers/xr/xr_positional_tracker.h"
 
 class XRBodyTracker : public XRPositionalTracker {

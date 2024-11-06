@@ -31,6 +31,7 @@
 #ifndef XR_FACE_TRACKER_H
 #define XR_FACE_TRACKER_H
 
+#include "core/os/thread_safe.h"
 #include "servers/xr/xr_tracker.h"
 
 /**

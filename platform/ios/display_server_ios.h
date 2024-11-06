@@ -32,6 +32,7 @@
 #define DISPLAY_SERVER_IOS_H
 
 #include "core/input/input.h"
+#include "core/os/thread_safe.h"
 #include "servers/display_server.h"
 
 #if defined(RD_ENABLED)

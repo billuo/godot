@@ -32,7 +32,6 @@
 #define MESSAGE_QUEUE_H
 
 #include "core/object/object_id.h"
-#include "core/os/thread_safe.h"
 #include "core/templates/local_vector.h"
 #include "core/templates/paged_allocator.h"
 #include "core/variant/variant.h"

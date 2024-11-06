@@ -31,6 +31,7 @@
 #ifndef PROGRESS_DIALOG_H
 #define PROGRESS_DIALOG_H
 
+#include "core/os/thread_safe.h"
 #include "scene/gui/box_container.h"
 #include "scene/gui/button.h"
 #include "scene/gui/label.h"

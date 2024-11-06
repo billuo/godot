@@ -38,6 +38,7 @@
 #include "core/input/input.h"
 #include "core/os/mutex.h"
 #include "core/os/thread.h"
+#include "core/os/thread_safe.h"
 #include "core/templates/local_vector.h"
 #include "drivers/alsa/audio_driver_alsa.h"
 #include "drivers/alsamidi/midi_driver_alsamidi.h"

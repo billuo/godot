@@ -31,6 +31,7 @@
 #ifndef TEXT_SERVER_DUMMY_H
 #define TEXT_SERVER_DUMMY_H
 
+#include "core/os/thread_safe.h"
 #include "servers/text/text_server_extension.h"
 
 /*************************************************************************/
