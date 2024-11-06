@@ -61,30 +61,7 @@ public:
 
 		ConnectionData() {}
 
-		ConnectionData(const Connection &p_connection) {
-			source = Object::cast_to<Node>(p_connection.signal.get_object());
-			signal = p_connection.signal.get_name();
-			target = Object::cast_to<Node>(p_connection.callable.get_object());
-			flags = p_connection.flags;
-
-			Callable base_callable;
-			if (p_connection.callable.is_custom()) {
-				CallableCustomBind *ccb = dynamic_cast<CallableCustomBind *>(p_connection.callable.get_custom());
-				if (ccb) {
-					binds = ccb->get_binds();
-					base_callable = ccb->get_callable();
-				}
-
-				CallableCustomUnbind *ccu = dynamic_cast<CallableCustomUnbind *>(p_connection.callable.get_custom());
-				if (ccu) {
-					unbinds = ccu->get_unbinds();
-					base_callable = ccu->get_callable();
-				}
-			} else {
-				base_callable = p_connection.callable;
-			}
-			method = base_callable.get_method();
-		}
+		ConnectionData(const Connection &p_connection);
 
 		Callable get_callable() const {
 			if (unbinds > 0) {

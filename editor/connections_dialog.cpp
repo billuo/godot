@@ -32,6 +32,7 @@
 
 #include "core/config/project_settings.h"
 #include "core/templates/hash_set.h"
+#include "core/variant/callable_bind.h"
 #include "editor/editor_help.h"
 #include "editor/editor_inspector.h"
 #include "editor/editor_node.h"
@@ -1646,6 +1647,31 @@ ConnectionsDock::ConnectionsDock() {
 	tree->connect(SceneStringName(gui_input), callable_mp(this, &ConnectionsDock::_tree_gui_input));
 
 	add_theme_constant_override("separation", 3 * EDSCALE);
+}
+
+ConnectDialog::ConnectionData::ConnectionData(const Connection &p_connection) {
+	source = Object::cast_to<Node>(p_connection.signal.get_object());
+	signal = p_connection.signal.get_name();
+	target = Object::cast_to<Node>(p_connection.callable.get_object());
+	flags = p_connection.flags;
+
+	Callable base_callable;
+	if (p_connection.callable.is_custom()) {
+		CallableCustomBind *ccb = dynamic_cast<CallableCustomBind *>(p_connection.callable.get_custom());
+		if (ccb) {
+			binds = ccb->get_binds();
+			base_callable = ccb->get_callable();
+		}
+
+		CallableCustomUnbind *ccu = dynamic_cast<CallableCustomUnbind *>(p_connection.callable.get_custom());
+		if (ccu) {
+			unbinds = ccu->get_unbinds();
+			base_callable = ccu->get_callable();
+		}
+	} else {
+		base_callable = p_connection.callable;
+	}
+	method = base_callable.get_method();
 }
 
 ConnectionsDock::~ConnectionsDock() {
