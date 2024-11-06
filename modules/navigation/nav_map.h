@@ -36,6 +36,7 @@
 
 #include "core/math/math_defs.h"
 #include "core/object/worker_thread_pool.h"
+#include "core/os/rw_lock.h"
 
 #include <KdTree2d.h>
 #include <KdTree3d.h>

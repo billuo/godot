@@ -35,6 +35,7 @@
 
 #include "core/object/class_db.h"
 #include "core/object/worker_thread_pool.h"
+#include "core/os/rw_lock.h"
 #include "core/templates/rid_owner.h"
 
 class Node;

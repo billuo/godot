@@ -35,6 +35,7 @@
 #include "core/object/class_db.h"
 #include "core/object/gdvirtual.gen.inc"
 #include "core/object/ref_counted.h"
+#include "core/os/rw_lock.h"
 #include "core/templates/safe_refcount.h"
 #include "core/templates/self_list.h"
 

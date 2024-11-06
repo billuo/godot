@@ -31,6 +31,7 @@
 #ifndef ANIMATED_TEXTURE_H
 #define ANIMATED_TEXTURE_H
 
+#include "core/os/rw_lock.h"
 #include "scene/resources/texture.h"
 
 class AnimatedTexture : public Texture2D {
