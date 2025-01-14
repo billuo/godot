@@ -29,6 +29,8 @@
 /**************************************************************************/
 
 #include "api/java_class_wrapper.h"
+#include "core/string/print_string.h"
+
 
 #include "string_android.h"
 #include "thread_jandroid.h"

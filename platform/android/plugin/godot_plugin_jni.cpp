@@ -34,9 +34,9 @@
 #include "jni_utils.h"
 #include "string_android.h"
 
-#include "core/config/engine.h"
-#include "core/config/project_settings.h"
 #include "core/error/error_macros.h"
+#include "core/string/print_string.h"
+#include "core/config/project_settings.h"
 
 static HashMap<String, JNISingleton *> jni_singletons;
 
