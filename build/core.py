@@ -3,13 +3,12 @@ import shutil
 import subprocess
 
 from . import BINDIR, N_JOBS
-from .godot import get_current_platform, get_editor_data_path
+from .godot import get_current_platform, get_editor_data_path, get_export_templates_subdir
 
 
 def copy_export_template(artifact_name, template_name):
     artifact = BINDIR.joinpath(artifact_name)
-    # TODO: auto version
-    export_templates = get_editor_data_path() / "export_templates" / "4.3.dev"
+    export_templates = get_editor_data_path() / "export_templates" / get_export_templates_subdir()
     assert artifact.exists(), f"Artifact ({artifact}) does not exist"
     assert artifact.is_file(), f"Artifact ({artifact}) is not a file"
     assert export_templates.exists(), f"Export templates directory ({export_templates}) does not exist"

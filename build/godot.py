@@ -2,6 +2,7 @@ import os
 import sys
 from enum import StrEnum
 from pathlib import Path
+from . import version
 
 
 class Platform(StrEnum):
@@ -62,3 +63,10 @@ def get_cache_path(platform: Platform) -> Path:
         case Platform.WINDOWS:
             return Path(os.environ["TEMP"]) / "Godot"
     raise ValueError(f"Unsupported platform: {platform}")
+
+
+def get_export_templates_subdir() -> str:
+    s = f"{version.major}.{version.minor}.{version.patch}"
+    if version.status == "rc" or version.status == "dev":
+        s += "." + version.status
+    return s
