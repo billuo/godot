@@ -2535,6 +2535,10 @@ const ShaderLanguage::BuiltinFuncDef ShaderLanguage::builtin_func_defs[] = {
 	{ "mat3", TYPE_MAT3, { TYPE_VEC3, TYPE_VEC3, TYPE_VEC3, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
 	{ "mat4", TYPE_MAT4, { TYPE_VEC4, TYPE_VEC4, TYPE_VEC4, TYPE_VEC4, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
 
+	{ "mat2", TYPE_MAT2, { TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
+	{ "mat3", TYPE_MAT3, { TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
+	{ "mat4", TYPE_MAT4, { TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_FLOAT, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
+
 	{ "mat2", TYPE_MAT2, { TYPE_FLOAT, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
 	{ "mat3", TYPE_MAT3, { TYPE_FLOAT, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
 	{ "mat4", TYPE_MAT4, { TYPE_FLOAT, TYPE_VOID }, { "" }, TAG_GLOBAL, false },
@@ -3696,7 +3700,7 @@ bool ShaderLanguage::_validate_function_call(BlockNode *p_block, const FunctionI
 	bool unsupported_builtin = false;
 	int builtin_idx = 0;
 
-	if (argcount <= 4) {
+	if (argcount < BuiltinFuncDef::MAX_ARGS) {
 		// Test builtins.
 		int idx = 0;
 		int full_match_index = 0;
@@ -3774,7 +3778,7 @@ bool ShaderLanguage::_validate_function_call(BlockNode *p_block, const FunctionI
 					}
 				}
 
-				if (!fail && argcount < 4 && builtin_func_defs[idx].args[argcount] != TYPE_VOID) {
+				if (!fail && argcount < BuiltinFuncDef::MAX_ARGS - 1 && builtin_func_defs[idx].args[argcount] != TYPE_VOID) {
 					fail = true; // Make sure the number of arguments matches.
 				}
 
