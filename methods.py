@@ -580,9 +580,26 @@ def precious_program(env, program, sources, **args):
     return program
 
 
+def _ninja_link_pool_callback(env, node, build):
+    # Ninja buffers the output of regular build edges and only prints it once they are
+    # done, which hides the linker progress until the very end (most noticeable when
+    # using MSVC with LTO). The `console` pool streams it as it happens instead.
+    if build is not None:
+        build["pool"] = "console"
+
+
+def _ninja_link_pool(env, targets):
+    # Assigned through a node callback, since passing `NINJA_POOL` as a builder override
+    # would also apply it to the objects implicitly built from the sources of the target.
+    if env.get("ninja", False):
+        for target in targets:
+            env.NinjaSetBuildNodeCallback(target, _ninja_link_pool_callback)
+
+
 def add_shared_library(env, name, sources, **args):
     library = env.SharedLibrary(name, sources, **args)
     env.NoCache(library)
+    _ninja_link_pool(env, library)
     return library
 
 
@@ -595,12 +612,17 @@ def add_library(env, name, sources, **args):
 def add_program(env, name, sources, **args):
     program = env.Program(name, sources, **args)
     env.NoCache(program)
+    _ninja_link_pool(env, program)
     return program
 
 
 def CommandNoCache(env, target, sources, command, **args):
     result = env.Command(target, sources, command, **args)
     env.NoCache(result)
+    # SCons deletes an existing target before running the command, unless it's precious.
+    # Generated files are rewritten by their command anyway, and deleting them first only
+    # churns their timestamp, forcing dependents to rebuild even when nothing changed.
+    env.Precious(result)
     return result
 
 
@@ -1555,26 +1577,45 @@ def generated_wrapper(
     for generated scripts. Meant to be invoked via `with` statement similar to
     creating a file.
 
+    The file is only written to if its contents changed, as rewriting an identical
+    file would update its modification time and force build systems tracking
+    timestamps (e.g. Ninja) to rebuild everything depending on it.
+
     - `path`: The path of the file to be created.
     - `guard`: Optional bool to determine if `#pragma once` should be added. If
     unassigned, the value is determined by file extension.
     """
 
-    with open(path, "wt", encoding="utf-8", newline="\n") as file:
+    with StringIO(newline="\n") as contents:
         if not path.endswith(".out"):  # For test output, we only care about the content.
-            file.write(generate_copyright_header(path))
-            file.write("\n/* THIS FILE IS GENERATED. EDITS WILL BE LOST. */\n\n")
+            contents.write(generate_copyright_header(path))
+            contents.write("\n/* THIS FILE IS GENERATED. EDITS WILL BE LOST. */\n\n")
 
             if guard is None:
                 guard = path.endswith((".h", ".hh", ".hpp", ".hxx", ".inc"))
             if guard:
-                file.write("#pragma once\n\n")
+                contents.write("#pragma once\n\n")
 
-        with StringIO(newline="\n") as str_io:
-            yield str_io
-            file.write(str_io.getvalue().strip() or "/* NO CONTENT */")
+        with StringIO(newline="\n") as body:
+            yield body
+            contents.write(body.getvalue().strip() or "/* NO CONTENT */")
 
-        file.write("\n")
+        contents.write("\n")
+
+        if get_contents(path) == contents.getvalue():
+            return
+
+        with open(path, "wt", encoding="utf-8", newline="\n") as file:
+            file.write(contents.getvalue())
+
+
+def get_contents(path: str) -> str:
+    """Read `path` as text, without newline translation. Returns "" if unreadable."""
+    try:
+        with open(path, "r", encoding="utf-8", newline="") as file:
+            return file.read()
+    except (OSError, UnicodeDecodeError):
+        return ""
 
 
 def get_buffer(path: str) -> bytes:
