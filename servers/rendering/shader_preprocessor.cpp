@@ -1355,6 +1355,8 @@ Error ShaderPreprocessor::preprocess(const String &p_code, const String &p_filen
 		insert_builtin_define("RENDERER_COMPATIBILITY", _MKSTR(0), pp_state);
 		insert_builtin_define("RENDERER_MOBILE", _MKSTR(1), pp_state);
 		insert_builtin_define("RENDERER_FORWARD_PLUS", _MKSTR(2), pp_state);
+
+		insert_builtin_define("__VERSION__", "330", pp_state);
 	}
 
 	Error err = preprocess(&pp_state, p_code, r_result);
