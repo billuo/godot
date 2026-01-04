@@ -1363,6 +1363,8 @@ void ShaderPreprocessor::_prepare_state(ShaderPreprocessor::State &rp_state, con
 		insert_builtin_define("RENDERER_COMPATIBILITY", _MKSTR(0), rp_state);
 		insert_builtin_define("RENDERER_MOBILE", _MKSTR(1), rp_state);
 		insert_builtin_define("RENDERER_FORWARD_PLUS", _MKSTR(2), rp_state);
+
+		insert_builtin_define("__VERSION__", "330", rp_state);
 	}
 }
 
