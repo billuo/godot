@@ -355,8 +355,9 @@ class ScriptEditor : public EditorDock {
 	bool trim_final_newlines_on_save;
 	bool convert_indent_on_save;
 	bool external_editor_active;
-	bool _should_use_external_editor(const Ref<Script> &p_for_script);
+	bool last_edit_was_external;
 
+	bool _should_use_external_editor(const Ref<Script> &p_for_script);
 	void _goto_script_line2(int p_line);
 	void _goto_script_line(Ref<RefCounted> p_script, int p_line);
 	void _change_execution(Ref<RefCounted> p_script, int p_line = -1, bool p_set = false);
