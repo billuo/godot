@@ -895,7 +895,14 @@ void DocumentEditorContainer::_goto_script_line(Ref<RefCounted> p_script, int p_
 	Ref<Script> scr = Object::cast_to<Script>(*p_script);
 	if (scr.is_valid() && (scr->has_source_code() || scr->get_path().is_resource_file())) {
 		if (edit(p_script, p_line, 0)) {
-			EditorNode::get_singleton()->push_item(p_script.ptr());
+			// HACK: avoid opening twice
+			if (!last_edit_was_external) {
+				EditorNode::get_singleton()->push_item(p_script.ptr());
+			}
+
+			if (TextEditorBase *text_editor_base = Object::cast_to<TextEditorBase>(_get_current_editor())) {
+				text_editor_base->goto_line_centered(p_line);
+			}
 		}
 	}
 }
@@ -2501,7 +2508,8 @@ bool DocumentEditorContainer::edit(const Ref<Resource> &p_resource, int p_line, 
 			(EditorDebuggerNode::get_singleton()->get_dump_stack_script() != p_resource || (EditorDebuggerNode::get_singleton()->get_debug_with_external_editor() && scr.is_valid())) &&
 			p_resource->get_path().is_resource_file()) {
 		if (ScriptEditorPlugin::open_in_external_editor(ProjectSettings::get_singleton()->globalize_path(p_resource->get_path()), p_line, p_col)) {
-			return false;
+			last_edit_was_external = true;
+			return true;
 		} else {
 			ERR_PRINT("Couldn't open external text editor, falling back to the internal editor. Review your `text_editor/external/` editor settings.");
 		}
