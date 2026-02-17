@@ -2050,18 +2050,23 @@ void EditorNode::update_resource_count(Node *p_node, bool p_remove) {
 	HashSet<Object *> scanned_objects;
 	gather_resources(p_node, res_list, scanned_objects, true);
 
+	bool changed = false;
 	for (Ref<Resource> &R : res_list) {
 		List<Node *>::Element *E = resource_count[R].find(p_node);
 		if (E) {
 			if (p_remove) {
 				resource_count[R].erase(E);
+				changed = true;
 			}
 		} else {
 			resource_count[R].push_back(p_node);
+			changed = true;
 		}
 	}
 
-	emit_signal(SNAME("resource_counter_changed"));
+	if (changed) {
+		emit_signal(SNAME("resource_counter_changed"));
+	}
 }
 
 int EditorNode::get_resource_count(Ref<Resource> p_res) {
