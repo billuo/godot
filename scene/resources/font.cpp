@@ -1416,13 +1416,14 @@ void FontFile::_get_property_list(List<PropertyInfo> *p_list) const {
 			PackedInt32Array glyphs = get_glyph_list(i, sz);
 			for (int k = 0; k < glyphs.size(); k++) {
 				const int32_t &gl = glyphs[k];
+				const String prefix_gl = prefix_sz + "glyphs/" + itos(gl) + '/';
 				if (sz.y == 0) {
-					p_list->push_back(PropertyInfo(Variant::VECTOR2, prefix_sz + "glyphs/" + itos(gl) + "/advance", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
+					p_list->push_back(PropertyInfo(Variant::VECTOR2, prefix_gl + "advance", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
 				}
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, prefix_sz + "glyphs/" + itos(gl) + "/offset", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
-				p_list->push_back(PropertyInfo(Variant::VECTOR2, prefix_sz + "glyphs/" + itos(gl) + "/size", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
-				p_list->push_back(PropertyInfo(Variant::RECT2, prefix_sz + "glyphs/" + itos(gl) + "/uv_rect", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
-				p_list->push_back(PropertyInfo(Variant::INT, prefix_sz + "glyphs/" + itos(gl) + "/texture_idx", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
+				p_list->push_back(PropertyInfo(Variant::VECTOR2, prefix_gl + "offset", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
+				p_list->push_back(PropertyInfo(Variant::VECTOR2, prefix_gl + "size", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
+				p_list->push_back(PropertyInfo(Variant::RECT2, prefix_gl + "uv_rect", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
+				p_list->push_back(PropertyInfo(Variant::INT, prefix_gl + "texture_idx", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_STORAGE));
 			}
 			if (sz.y == 0) {
 				TypedArray<Vector2i> kerning_map = get_kerning_list(i, sz.x);
