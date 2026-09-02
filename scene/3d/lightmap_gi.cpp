@@ -1810,6 +1810,7 @@ void LightmapGI::set_light_data(const Ref<LightmapGIData> &p_data) {
 	}
 
 	update_gizmos();
+	update_configuration_warnings();
 }
 
 Ref<LightmapGIData> LightmapGI::get_light_data() const {
