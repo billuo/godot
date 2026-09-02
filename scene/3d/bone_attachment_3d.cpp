@@ -232,6 +232,7 @@ void BoneAttachment3D::set_bone_idx(const int &p_idx) {
 	}
 
 	notify_property_list_changed();
+	update_configuration_warnings();
 }
 
 int BoneAttachment3D::get_bone_idx() const {
@@ -271,6 +272,7 @@ void BoneAttachment3D::set_use_external_skeleton(bool p_use_external_skeleton) {
 	}
 
 	notify_property_list_changed();
+	update_configuration_warnings();
 }
 
 bool BoneAttachment3D::get_use_external_skeleton() const {
@@ -281,6 +283,7 @@ void BoneAttachment3D::set_external_skeleton(NodePath p_external_skeleton) {
 	external_skeleton_node = p_external_skeleton;
 	_update_external_skeleton_cache();
 	notify_property_list_changed();
+	update_configuration_warnings();
 }
 
 NodePath BoneAttachment3D::get_external_skeleton() const {
