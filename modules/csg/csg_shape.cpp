@@ -118,7 +118,7 @@ void CSGShape3D::set_use_collision(bool p_enable) {
 		set_collision_layer(collision_layer);
 		set_collision_mask(collision_mask);
 		set_collision_priority(collision_priority);
-		_make_dirty(); //force update
+		_update_shape_recursive(); //force update
 	} else {
 		PhysicsServer3D::get_singleton()->free_rid(root_collision_body);
 		root_collision_body = RID();
@@ -214,7 +214,7 @@ real_t CSGShape3D::get_collision_priority() const {
 
 void CSGShape3D::set_autosmooth(bool p_smooth) {
 	autosmooth = p_smooth;
-	_make_dirty();
+	_update_shape_recursive();
 	notify_property_list_changed();
 }
 
@@ -224,7 +224,7 @@ bool CSGShape3D::is_autosmooth() const {
 
 void CSGShape3D::set_smoothing_angle(const float p_angle) {
 	smoothing_angle = p_angle;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 float CSGShape3D::get_smoothing_angle() const {
@@ -242,7 +242,7 @@ void CSGShape3D::set_snap(float p_snap) {
 	}
 
 	snap = p_snap;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 float CSGShape3D::get_snap() const {
@@ -250,23 +250,17 @@ float CSGShape3D::get_snap() const {
 }
 #endif // DISABLE_DEPRECATED
 
-void CSGShape3D::_make_dirty(bool p_parent_removing) {
-#ifndef PHYSICS_3D_DISABLED
-	if ((p_parent_removing || is_root_shape()) && !dirty) {
-		callable_mp(this, &CSGShape3D::update_shape).call_deferred(); // Must be deferred; otherwise, is_root_shape() will use the previous parent.
+void CSGShape3D::_update_shape_recursive() {
+	if (dirty) {
+		return;
 	}
-#endif // PHYSICS_3D_DISABLED
-
-	if (!is_root_shape()) {
-		parent_shape->_make_dirty();
-	}
-#ifndef PHYSICS_3D_DISABLED
-	else if (!dirty) {
-		callable_mp(this, &CSGShape3D::update_shape).call_deferred();
-	}
-#endif // PHYSICS_3D_DISABLED
-
 	dirty = true;
+
+	if (is_root_shape()) {
+		update_shape();
+	} else {
+		parent_shape->_update_shape_recursive();
+	}
 }
 
 enum ManifoldProperty {
@@ -987,37 +981,45 @@ Vector<Vector3> CSGShape3D::get_brush_faces() {
 void CSGShape3D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_PARENTED: {
-			Node *parentn = get_parent();
-			if (parentn) {
-				parent_shape = Object::cast_to<CSGShape3D>(parentn);
-				if (parent_shape) {
-					set_base(RID());
-					root_mesh.unref();
+			Node *parent = get_parent();
+			CSGShape3D *csg = Object::cast_to<CSGShape3D>(parent);
+
+			if (csg) {
+				parent_shape = csg;
+				set_base(RID());
+				root_mesh.unref();
+				if (!brush) {
+					// First time being parented, need to build brush ourselves.
+					_update_shape_recursive();
+				} else {
+					parent_shape->_update_shape_recursive();
+				}
+			} else {
+				parent_shape = nullptr;
+				if (get_base().is_null()) {
+					_update_shape_recursive();
 				}
 			}
-			if (!brush || parent_shape) {
-				// Update this node if uninitialized, or both this node and its new parent if it gets added to another CSG shape
-				_make_dirty();
-			}
+
 			last_visible = is_visible();
 		} break;
 
 		case NOTIFICATION_UNPARENTED: {
-			if (!is_root_shape()) {
-				// Update this node and its previous parent only if it's currently being removed from another CSG shape
-				_make_dirty(true); // Must be forced since is_root_shape() uses the previous parent
-			}
+			CSGShape3D *prev_parent = parent_shape;
 			parent_shape = nullptr;
+			if (prev_parent) {
+				prev_parent->_update_shape_recursive();
+			}
 		} break;
 
 		case NOTIFICATION_CHILD_ORDER_CHANGED: {
-			_make_dirty();
+			_update_shape_recursive();
 		} break;
 
 		case NOTIFICATION_VISIBILITY_CHANGED: {
 			if (!is_root_shape() && last_visible != is_visible()) {
 				// Update this node's parent only if its own visibility has changed, not the visibility of parent nodes
-				parent_shape->_make_dirty();
+				parent_shape->_update_shape_recursive();
 			}
 			last_visible = is_visible();
 		} break;
@@ -1025,7 +1027,7 @@ void CSGShape3D::_notification(int p_what) {
 		case NOTIFICATION_LOCAL_TRANSFORM_CHANGED: {
 			if (!is_root_shape()) {
 				// Update this node's parent only if its own transformation has changed, not the transformation of parent nodes
-				parent_shape->_make_dirty();
+				parent_shape->_update_shape_recursive();
 			}
 		} break;
 
@@ -1043,7 +1045,7 @@ void CSGShape3D::_notification(int p_what) {
 				set_collision_mask(collision_mask);
 				set_collision_priority(collision_priority);
 				debug_shape_old_transform = get_global_transform();
-				_make_dirty();
+				_update_shape_recursive();
 			}
 		} break;
 
@@ -1076,7 +1078,7 @@ void CSGShape3D::_notification(int p_what) {
 
 void CSGShape3D::set_operation(Operation p_operation) {
 	operation = p_operation;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -1086,7 +1088,7 @@ CSGShape3D::Operation CSGShape3D::get_operation() const {
 
 void CSGShape3D::set_calculate_tangents(bool p_calculate_tangents) {
 	calculate_tangents = p_calculate_tangents;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 bool CSGShape3D::is_calculating_tangents() const {
@@ -1275,7 +1277,7 @@ void CSGPrimitive3D::set_flip_faces(bool p_invert) {
 
 	flip_faces = p_invert;
 
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 bool CSGPrimitive3D::get_flip_faces() {
@@ -1307,7 +1309,7 @@ CSGBrush *CSGMesh3D::_build_brush() {
 		Array arrays = mesh->surface_get_arrays(i);
 
 		if (arrays.is_empty()) {
-			_make_dirty();
+			_update_shape_recursive();
 			ERR_FAIL_COND_V(arrays.is_empty(), memnew(CSGBrush));
 		}
 
@@ -1436,7 +1438,7 @@ CSGBrush *CSGMesh3D::_build_brush() {
 }
 
 void CSGMesh3D::_mesh_changed() {
-	_make_dirty();
+	_update_shape_recursive();
 
 	callable_mp((Node3D *)this, &Node3D::update_gizmos).call_deferred();
 }
@@ -1446,7 +1448,7 @@ void CSGMesh3D::set_material(const Ref<Material> &p_material) {
 		return;
 	}
 	material = p_material;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 Ref<Material> CSGMesh3D::get_material() const {
@@ -1643,7 +1645,7 @@ void CSGSphere3D::_bind_methods() {
 void CSGSphere3D::set_radius(const float p_radius) {
 	ERR_FAIL_COND(p_radius <= 0);
 	radius = p_radius;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -1653,7 +1655,7 @@ float CSGSphere3D::get_radius() const {
 
 void CSGSphere3D::set_radial_segments(const int p_radial_segments) {
 	radial_segments = p_radial_segments > 4 ? p_radial_segments : 4;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -1663,7 +1665,7 @@ int CSGSphere3D::get_radial_segments() const {
 
 void CSGSphere3D::set_rings(const int p_rings) {
 	rings = p_rings > 1 ? p_rings : 1;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -1673,7 +1675,7 @@ int CSGSphere3D::get_rings() const {
 
 void CSGSphere3D::set_smooth_faces(const bool p_smooth_faces) {
 	smooth_faces = p_smooth_faces;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 bool CSGSphere3D::get_smooth_faces() const {
@@ -1682,7 +1684,7 @@ bool CSGSphere3D::get_smooth_faces() const {
 
 void CSGSphere3D::set_material(const Ref<Material> &p_material) {
 	material = p_material;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 Ref<Material> CSGSphere3D::get_material() const {
@@ -1812,7 +1814,7 @@ void CSGBox3D::_bind_methods() {
 
 void CSGBox3D::set_size(const Vector3 &p_size) {
 	size = p_size;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -1825,17 +1827,17 @@ Vector3 CSGBox3D::get_size() const {
 bool CSGBox3D::_set(const StringName &p_name, const Variant &p_value) {
 	if (p_name == "width") {
 		size.x = p_value;
-		_make_dirty();
+		_update_shape_recursive();
 		update_gizmos();
 		return true;
 	} else if (p_name == "height") {
 		size.y = p_value;
-		_make_dirty();
+		_update_shape_recursive();
 		update_gizmos();
 		return true;
 	} else if (p_name == "depth") {
 		size.z = p_value;
-		_make_dirty();
+		_update_shape_recursive();
 		update_gizmos();
 		return true;
 	} else {
@@ -1846,7 +1848,7 @@ bool CSGBox3D::_set(const StringName &p_name, const Variant &p_value) {
 
 void CSGBox3D::set_material(const Ref<Material> &p_material) {
 	material = p_material;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2020,7 +2022,7 @@ void CSGCylinder3D::_bind_methods() {
 
 void CSGCylinder3D::set_radius(const float p_radius) {
 	radius = p_radius;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2030,7 +2032,7 @@ float CSGCylinder3D::get_radius() const {
 
 void CSGCylinder3D::set_height(const float p_height) {
 	height = p_height;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2041,7 +2043,7 @@ float CSGCylinder3D::get_height() const {
 void CSGCylinder3D::set_sides(const int p_sides) {
 	ERR_FAIL_COND(p_sides < 3);
 	sides = p_sides;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2051,7 +2053,7 @@ int CSGCylinder3D::get_sides() const {
 
 void CSGCylinder3D::set_cone(const bool p_cone) {
 	cone = p_cone;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2061,7 +2063,7 @@ bool CSGCylinder3D::is_cone() const {
 
 void CSGCylinder3D::set_smooth_faces(const bool p_smooth_faces) {
 	smooth_faces = p_smooth_faces;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 bool CSGCylinder3D::get_smooth_faces() const {
@@ -2070,7 +2072,7 @@ bool CSGCylinder3D::get_smooth_faces() const {
 
 void CSGCylinder3D::set_material(const Ref<Material> &p_material) {
 	material = p_material;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 Ref<Material> CSGCylinder3D::get_material() const {
@@ -2245,7 +2247,7 @@ void CSGTorus3D::_bind_methods() {
 
 void CSGTorus3D::set_inner_radius(const float p_inner_radius) {
 	inner_radius = p_inner_radius;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2255,7 +2257,7 @@ float CSGTorus3D::get_inner_radius() const {
 
 void CSGTorus3D::set_outer_radius(const float p_outer_radius) {
 	outer_radius = p_outer_radius;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2266,7 +2268,7 @@ float CSGTorus3D::get_outer_radius() const {
 void CSGTorus3D::set_sides(const int p_sides) {
 	ERR_FAIL_COND(p_sides < 3);
 	sides = p_sides;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2277,7 +2279,7 @@ int CSGTorus3D::get_sides() const {
 void CSGTorus3D::set_ring_sides(const int p_ring_sides) {
 	ERR_FAIL_COND(p_ring_sides < 3);
 	ring_sides = p_ring_sides;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2287,7 +2289,7 @@ int CSGTorus3D::get_ring_sides() const {
 
 void CSGTorus3D::set_smooth_faces(const bool p_smooth_faces) {
 	smooth_faces = p_smooth_faces;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 bool CSGTorus3D::get_smooth_faces() const {
@@ -2296,7 +2298,7 @@ bool CSGTorus3D::get_smooth_faces() const {
 
 void CSGTorus3D::set_material(const Ref<Material> &p_material) {
 	material = p_material;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 Ref<Material> CSGTorus3D::get_material() const {
@@ -2699,7 +2701,7 @@ void CSGPolygon3D::_validate_property(PropertyInfo &p_property) const {
 }
 
 void CSGPolygon3D::_path_changed() {
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2794,7 +2796,7 @@ void CSGPolygon3D::_bind_methods() {
 
 void CSGPolygon3D::set_polygon(const Vector<Vector2> &p_polygon) {
 	polygon = p_polygon;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2804,7 +2806,7 @@ Vector<Vector2> CSGPolygon3D::get_polygon() const {
 
 void CSGPolygon3D::set_mode(Mode p_mode) {
 	mode = p_mode;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 	notify_property_list_changed();
 }
@@ -2816,7 +2818,7 @@ CSGPolygon3D::Mode CSGPolygon3D::get_mode() const {
 void CSGPolygon3D::set_depth(const float p_depth) {
 	ERR_FAIL_COND(p_depth < 0.001);
 	depth = p_depth;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2826,7 +2828,7 @@ float CSGPolygon3D::get_depth() const {
 
 void CSGPolygon3D::set_path_continuous_u(bool p_enable) {
 	path_continuous_u = p_enable;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 bool CSGPolygon3D::is_path_continuous_u() const {
@@ -2835,7 +2837,7 @@ bool CSGPolygon3D::is_path_continuous_u() const {
 
 void CSGPolygon3D::set_path_u_distance(real_t p_path_u_distance) {
 	path_u_distance = p_path_u_distance;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2846,7 +2848,7 @@ real_t CSGPolygon3D::get_path_u_distance() const {
 void CSGPolygon3D::set_spin_degrees(const float p_spin_degrees) {
 	ERR_FAIL_COND(p_spin_degrees < 0.01 || p_spin_degrees > 360);
 	spin_degrees = p_spin_degrees;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2857,7 +2859,7 @@ float CSGPolygon3D::get_spin_degrees() const {
 void CSGPolygon3D::set_spin_sides(int p_spin_sides) {
 	ERR_FAIL_COND(p_spin_sides < 3);
 	spin_sides = p_spin_sides;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2867,7 +2869,7 @@ int CSGPolygon3D::get_spin_sides() const {
 
 void CSGPolygon3D::set_path_node(const NodePath &p_path) {
 	path_node = p_path;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2877,7 +2879,7 @@ NodePath CSGPolygon3D::get_path_node() const {
 
 void CSGPolygon3D::set_path_interval_type(PathIntervalType p_interval_type) {
 	path_interval_type = p_interval_type;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2887,7 +2889,7 @@ CSGPolygon3D::PathIntervalType CSGPolygon3D::get_path_interval_type() const {
 
 void CSGPolygon3D::set_path_interval(float p_interval) {
 	path_interval = p_interval;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2897,7 +2899,7 @@ float CSGPolygon3D::get_path_interval() const {
 
 void CSGPolygon3D::set_path_simplify_angle(float p_angle) {
 	path_simplify_angle = p_angle;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2907,7 +2909,7 @@ float CSGPolygon3D::get_path_simplify_angle() const {
 
 void CSGPolygon3D::set_path_rotation(PathRotation p_rotation) {
 	path_rotation = p_rotation;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2917,7 +2919,7 @@ CSGPolygon3D::PathRotation CSGPolygon3D::get_path_rotation() const {
 
 void CSGPolygon3D::set_path_rotation_accurate(bool p_enabled) {
 	path_rotation_accurate = p_enabled;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2927,7 +2929,7 @@ bool CSGPolygon3D::get_path_rotation_accurate() const {
 
 void CSGPolygon3D::set_path_local(bool p_enable) {
 	path_local = p_enable;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2937,7 +2939,7 @@ bool CSGPolygon3D::is_path_local() const {
 
 void CSGPolygon3D::set_path_joined(bool p_enable) {
 	path_joined = p_enable;
-	_make_dirty();
+	_update_shape_recursive();
 	update_gizmos();
 }
 
@@ -2947,7 +2949,7 @@ bool CSGPolygon3D::is_path_joined() const {
 
 void CSGPolygon3D::set_smooth_faces(const bool p_smooth_faces) {
 	smooth_faces = p_smooth_faces;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 bool CSGPolygon3D::get_smooth_faces() const {
@@ -2956,7 +2958,7 @@ bool CSGPolygon3D::get_smooth_faces() const {
 
 void CSGPolygon3D::set_material(const Ref<Material> &p_material) {
 	material = p_material;
-	_make_dirty();
+	_update_shape_recursive();
 }
 
 Ref<Material> CSGPolygon3D::get_material() const {
