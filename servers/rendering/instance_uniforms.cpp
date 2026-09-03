@@ -69,7 +69,7 @@ void InstanceUniforms::materials_append(RID p_material) {
 		} else {
 			Item i;
 			_init_param(i, srcp);
-			_parameters[name] = i;
+			_insert_param(name, i);
 		}
 	}
 }
@@ -133,7 +133,7 @@ void InstanceUniforms::set(RID p_self, const StringName &p_name, const Variant &
 	} else {
 		Item i; // Initialize in materials_append.
 		i.value = p_value;
-		_parameters[p_name] = i;
+		_insert_param(p_name, i);
 	}
 }
 
@@ -191,6 +191,20 @@ void InstanceUniforms::_init_param(Item &r_item, const RendererMaterialStorage::
 				break;
 		}
 	}
+}
+
+void InstanceUniforms::_insert_param(const StringName &p_name, const InstanceUniforms::Item &p_item) {
+	if (p_item.is_valid()) {
+		for (const KeyValue<StringName, Item> &kv : _parameters) {
+			if (kv.key != p_name && kv.value.is_valid() && kv.value.index == p_item.index) {
+				WARN_PRINT("Instance shader uniform '" + p_name +
+						"' uses the same index (" + itos(p_item.index) + ") as instance shader uniform '" + kv.key +
+						"'. Only one of them will display correctly.");
+				break;
+			}
+		}
+	}
+	_parameters[p_name] = p_item;
 }
 
 void InstanceUniforms::_invalidate_items() {
