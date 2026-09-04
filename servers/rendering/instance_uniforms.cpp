@@ -103,6 +103,18 @@ bool InstanceUniforms::materials_finish(RID p_self) {
 		}
 	}
 
+	// Remove instance uniforms that are not in any material.
+	LocalVector<StringName> to_erase;
+	for (KeyValue<StringName, Item> &kv : _parameters) {
+		if (!kv.value.is_valid()) {
+			WARN_PRINT("Dropping instance shader uniform '" + kv.key + "' which is set but absent in material.");
+			to_erase.push_back(kv.key);
+		}
+	}
+	for (const StringName &key : to_erase) {
+		_parameters.erase(key);
+	}
+
 	return should_alloc;
 }
 
