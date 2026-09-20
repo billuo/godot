@@ -182,6 +182,15 @@ void CanvasItem::_redraw_callback() {
 	pending_update = false; // Don't change to false until finished drawing (avoid recursive update).
 }
 
+void CanvasItem::_redraw_now() {
+	if (pending_update) {
+		// A redraw is already queued for this item.
+		return;
+	}
+	pending_update = true;
+	_redraw_callback();
+}
+
 Transform2D CanvasItem::get_global_transform_with_canvas() const {
 	ERR_READ_THREAD_GUARD_V(Transform2D());
 	if (canvas_layer) {

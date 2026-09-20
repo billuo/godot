@@ -1105,7 +1105,12 @@ void Viewport::update_canvas_items() {
 			}
 		}
 	}
-	_update_canvas_items(this);
+
+	if (canvas_items_redraw_queued) {
+		return; // Already queued for this frame.
+	}
+	canvas_items_redraw_queued = true;
+	callable_mp(this, &Viewport::_redraw_canvas_items_deferred).call_deferred();
 }
 
 void Viewport::set_use_oversampling(bool p_oversampling) {
@@ -1407,7 +1412,16 @@ Transform2D Viewport::get_final_transform() const {
 	return stretch_transform * global_canvas_transform;
 }
 
-void Viewport::_update_canvas_items(Node *p_node) {
+void Viewport::_redraw_canvas_items_deferred() {
+	canvas_items_redraw_queued = false;
+
+	if (!is_inside_tree()) {
+		return;
+	}
+	_redraw_canvas_items(this);
+}
+
+void Viewport::_redraw_canvas_items(Node *p_node) {
 	if (p_node != this) {
 		Window *w = Object::cast_to<Window>(p_node);
 		if (w && (!w->is_inside_tree() || !w->is_embedded())) {
@@ -1416,14 +1430,17 @@ void Viewport::_update_canvas_items(Node *p_node) {
 
 		CanvasItem *ci = Object::cast_to<CanvasItem>(p_node);
 		if (ci) {
-			ci->queue_redraw();
+			if (!ci->is_visible_in_tree()) {
+				return; // Hidden items and their children aren't drawn.
+			}
+			ci->_redraw_now();
 		}
 	}
 
 	int cc = p_node->get_child_count();
 
 	for (int i = 0; i < cc; i++) {
-		_update_canvas_items(p_node->get_child(i));
+		_redraw_canvas_items(p_node->get_child(i));
 	}
 }
 

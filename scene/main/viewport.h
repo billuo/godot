@@ -490,7 +490,9 @@ private:
 	void _drop_mouse_focus();
 	void _drop_physics_mouseover(bool p_paused_only = false);
 
-	void _update_canvas_items(Node *p_node);
+	bool canvas_items_redraw_queued = false;
+	void _redraw_canvas_items(Node *p_node);
+	void _redraw_canvas_items_deferred();
 
 	friend class Window;
 
