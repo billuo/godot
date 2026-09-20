@@ -164,6 +164,9 @@ private:
 
 	void _redraw_callback();
 
+	// Redraws the item right away. Used by Viewport to redraw whole subtrees in a single deferred pass.
+	void _redraw_now();
+
 	void _enter_canvas();
 	void _exit_canvas();
 
