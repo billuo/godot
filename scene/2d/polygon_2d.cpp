@@ -106,6 +106,7 @@ bool Polygon2D::_edit_is_selected_on_click(const Point2 &p_point, double p_toler
 #endif // DEBUG_ENABLED
 
 void Polygon2D::_skeleton_bone_setup_changed() {
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -116,6 +117,9 @@ void Polygon2D::_notification(int p_what) {
 
 	switch (p_what) {
 		case NOTIFICATION_TRANSFORM_CHANGED:
+			// The surface data depends on the global transforms when a skeleton is used.
+			mesh_dirty = true;
+			[[fallthrough]];
 		case NOTIFICATION_DRAW: {
 			if (polygon.size() < 3) {
 				return;
@@ -146,6 +150,12 @@ void Polygon2D::_notification(int p_what) {
 				}
 
 				current_skeleton_id = new_skeleton_id;
+			}
+
+			if (!mesh_dirty) {
+				// Nothing that affects the mesh changed, so only the draw command needs to be re-added.
+				RS::get_singleton()->canvas_item_add_mesh(get_canvas_item(), mesh, Transform2D(), Color(1, 1, 1), texture.is_valid() ? texture->get_scaled_rid() : RID());
+				return;
 			}
 
 			Vector<Vector2> points;
@@ -433,6 +443,7 @@ void Polygon2D::_notification(int p_what) {
 			last_has_bones = has_bones;
 
 			RS::get_singleton()->canvas_item_add_mesh(get_canvas_item(), mesh, Transform2D(), Color(1, 1, 1), texture.is_valid() ? texture->get_scaled_rid() : RID());
+			mesh_dirty = false;
 		} break;
 	}
 }
@@ -440,6 +451,7 @@ void Polygon2D::_notification(int p_what) {
 void Polygon2D::set_polygon(const Vector<Vector2> &p_polygon) {
 	polygon = p_polygon;
 	rect_cache_dirty = true;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -449,6 +461,8 @@ Vector<Vector2> Polygon2D::get_polygon() const {
 
 void Polygon2D::set_internal_vertex_count(int p_count) {
 	internal_vertices = p_count;
+	mesh_dirty = true;
+	queue_redraw();
 }
 
 int Polygon2D::get_internal_vertex_count() const {
@@ -457,6 +471,7 @@ int Polygon2D::get_internal_vertex_count() const {
 
 void Polygon2D::set_uv(const Vector<Vector2> &p_uv) {
 	uv = p_uv;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -466,6 +481,7 @@ Vector<Vector2> Polygon2D::get_uv() const {
 
 void Polygon2D::set_polygons(const Array &p_polygons) {
 	polygons = p_polygons;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -475,6 +491,7 @@ Array Polygon2D::get_polygons() const {
 
 void Polygon2D::set_color(const Color &p_color) {
 	color = p_color;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -484,6 +501,7 @@ Color Polygon2D::get_color() const {
 
 void Polygon2D::set_vertex_colors(const Vector<Color> &p_colors) {
 	vertex_colors = p_colors;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -493,6 +511,7 @@ Vector<Color> Polygon2D::get_vertex_colors() const {
 
 void Polygon2D::set_texture(const Ref<Texture2D> &p_texture) {
 	texture = p_texture;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -502,6 +521,7 @@ Ref<Texture2D> Polygon2D::get_texture() const {
 
 void Polygon2D::set_texture_offset(const Vector2 &p_offset) {
 	tex_ofs = p_offset;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -511,6 +531,7 @@ Vector2 Polygon2D::get_texture_offset() const {
 
 void Polygon2D::set_texture_rotation(real_t p_rot) {
 	tex_rot = p_rot;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -520,6 +541,7 @@ real_t Polygon2D::get_texture_rotation() const {
 
 void Polygon2D::set_texture_scale(const Size2 &p_scale) {
 	tex_scale = p_scale;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -529,6 +551,7 @@ Size2 Polygon2D::get_texture_scale() const {
 
 void Polygon2D::set_invert(bool p_invert) {
 	invert = p_invert;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -547,6 +570,7 @@ bool Polygon2D::get_antialiased() const {
 
 void Polygon2D::set_invert_border(real_t p_invert_border) {
 	invert_border = p_invert_border;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -557,6 +581,7 @@ real_t Polygon2D::get_invert_border() const {
 void Polygon2D::set_offset(const Vector2 &p_offset) {
 	offset = p_offset;
 	rect_cache_dirty = true;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -569,6 +594,8 @@ void Polygon2D::add_bone(const NodePath &p_path, const Vector<float> &p_weights)
 	bone.path = p_path;
 	bone.weights = p_weights;
 	bone_weights.push_back(bone);
+	mesh_dirty = true;
+	queue_redraw();
 }
 
 int Polygon2D::get_bone_count() const {
@@ -589,21 +616,27 @@ const Vector<float> &Polygon2D::get_bone_weights(int p_index) const {
 void Polygon2D::erase_bone(int p_idx) {
 	ERR_FAIL_INDEX(p_idx, bone_weights.size());
 	bone_weights.remove_at(p_idx);
+	mesh_dirty = true;
+	queue_redraw();
 }
 
 void Polygon2D::clear_bones() {
 	bone_weights.clear();
+	mesh_dirty = true;
+	queue_redraw();
 }
 
 void Polygon2D::set_bone_weights(int p_index, const Vector<float> &p_weights) {
 	ERR_FAIL_INDEX(p_index, bone_weights.size());
 	bone_weights.write[p_index].weights = p_weights;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
 void Polygon2D::set_bone_path(int p_index, const NodePath &p_path) {
 	ERR_FAIL_INDEX(p_index, bone_weights.size());
 	bone_weights.write[p_index].path = p_path;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
@@ -632,6 +665,7 @@ void Polygon2D::set_skeleton(const NodePath &p_skeleton) {
 		return;
 	}
 	skeleton = p_skeleton;
+	mesh_dirty = true;
 	queue_redraw();
 }
 
