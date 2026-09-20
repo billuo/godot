@@ -54,7 +54,22 @@ protected:
 	real_t one_way_collision_margin = 1.0;
 	Vector2 one_way_collision_direction = Vector2(0.0, 1.0);
 
-	Vector<Vector<Vector2>> _decompose_in_convex();
+	// Cached convex decomposition to avoid recomputation. Valid until polygon points change.
+	Vector<Vector<Vector2>> decomposed_polygon;
+	bool decomposed_polygon_valid = false;
+
+	const Vector<Vector<Vector2>> &_decompose_in_convex();
+
+#ifdef TOOLS_ENABLED
+	// Cached triangle geometry for the debug fill drawn in the editor.
+	// Rebuilt together with the convex decomposition.
+	Vector<Vector2> debug_fill_points;
+	Vector<int> debug_fill_indices;
+	Vector<Color> debug_fill_colors;
+	bool debug_fill_valid = false;
+
+	void _build_debug_fill();
+#endif
 
 	void _build_polygon();
 
