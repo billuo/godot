@@ -38,6 +38,7 @@
 #include "scene/main/scene_tree.h"
 #include "scene/resources/2d/concave_polygon_shape_2d.h"
 #include "scene/resources/2d/convex_polygon_shape_2d.h"
+#include "servers/rendering/rendering_server.h"
 
 void CollisionPolygon2D::_build_polygon() {
 	collision_object->shape_owner_clear_shapes(owner_id);
@@ -52,7 +53,7 @@ void CollisionPolygon2D::_build_polygon() {
 
 		//here comes the sun, lalalala
 		//decompose concave into multiple convex polygons and add them
-		Vector<Vector<Vector2>> decomp = _decompose_in_convex();
+		const Vector<Vector<Vector2>> &decomp = _decompose_in_convex();
 		for (int i = 0; i < decomp.size(); i++) {
 			Ref<ConvexPolygonShape2D> convex = memnew(ConvexPolygonShape2D);
 			convex->set_points(decomp[i]);
@@ -81,10 +82,57 @@ void CollisionPolygon2D::_build_polygon() {
 	}
 }
 
-Vector<Vector<Vector2>> CollisionPolygon2D::_decompose_in_convex() {
-	Vector<Vector<Vector2>> decomp = Geometry2D::decompose_polygon_in_convex(polygon);
-	return decomp;
+const Vector<Vector<Vector2>> &CollisionPolygon2D::_decompose_in_convex() {
+	if (!decomposed_polygon_valid) {
+		decomposed_polygon = Geometry2D::decompose_polygon_in_convex(polygon);
+		decomposed_polygon_valid = true;
+	}
+	return decomposed_polygon;
 }
+
+#ifdef TOOLS_ENABLED
+void CollisionPolygon2D::_build_debug_fill() {
+	const Vector<Vector<Vector2>> &decomp = _decompose_in_convex();
+
+	int total_points = 0;
+	int total_indices = 0;
+	for (const Vector<Vector2> &piece : decomp) {
+		if (piece.size() < 3) {
+			continue;
+		}
+		total_points += piece.size();
+		total_indices += (piece.size() - 2) * 3;
+	}
+
+	debug_fill_points.resize(total_points);
+	debug_fill_indices.resize(total_indices);
+	debug_fill_colors.resize(total_points);
+
+	// Convex pieces can be drawn as triangle fans, so no triangulation is needed.
+	Color c(0.4, 0.9, 0.1);
+	int point_index = 0;
+	int index_index = 0;
+	for (const Vector<Vector2> &piece : decomp) {
+		if (piece.size() < 3) {
+			continue;
+		}
+		c.set_hsv(Math::fmod(c.get_h() + 0.738, 1), c.get_s(), c.get_v(), 0.5);
+
+		for (int i = 0; i < piece.size(); i++) {
+			debug_fill_points.write[point_index + i] = piece[i];
+			debug_fill_colors.write[point_index + i] = c;
+		}
+		for (int i = 1; i < piece.size() - 1; i++) {
+			debug_fill_indices.write[index_index++] = point_index;
+			debug_fill_indices.write[index_index++] = point_index + i;
+			debug_fill_indices.write[index_index++] = point_index + i + 1;
+		}
+		point_index += piece.size();
+	}
+
+	debug_fill_valid = true;
+}
+#endif
 
 void CollisionPolygon2D::_update_in_shape_owner(bool p_xform_only) {
 	collision_object->shape_owner_set_transform(owner_id, get_transform());
@@ -136,12 +184,11 @@ void CollisionPolygon2D::_notification(int p_what) {
 			if (polygon.size() > 2) {
 #ifdef TOOLS_ENABLED
 				if (build_mode == BUILD_SOLIDS) {
-					Vector<Vector<Vector2>> decomp = _decompose_in_convex();
-
-					Color c(0.4, 0.9, 0.1);
-					for (int i = 0; i < decomp.size(); i++) {
-						c.set_hsv(Math::fmod(c.get_h() + 0.738, 1), c.get_s(), c.get_v(), 0.5);
-						draw_colored_polygon(decomp[i], c);
+					if (!debug_fill_valid) {
+						_build_debug_fill();
+					}
+					if (!debug_fill_indices.is_empty()) {
+						RenderingServer::get_singleton()->canvas_item_add_triangle_array(get_canvas_item(), debug_fill_indices, debug_fill_points, debug_fill_colors);
 					}
 				}
 #endif
@@ -178,6 +225,12 @@ void CollisionPolygon2D::_notification(int p_what) {
 }
 
 void CollisionPolygon2D::set_polygon(const Vector<Point2> &p_polygon) {
+	if (polygon != p_polygon) {
+		decomposed_polygon_valid = false;
+#ifdef TOOLS_ENABLED
+		debug_fill_valid = false;
+#endif
+	}
 	polygon = p_polygon;
 
 	{
