@@ -37,6 +37,7 @@ TEST_FORCE_LINK(test_canvas_item)
 #include "scene/main/scene_tree.h"
 #include "scene/main/window.h"
 #include "scene/resources/material.h"
+#include "scene/resources/shader.h"
 #include "tests/signal_watcher.h"
 
 namespace TestCanvasItem {
@@ -47,10 +48,30 @@ static Sprite2D *make_sprite(Node *p_parent) {
 	return sprite;
 }
 
-static Ref<ShaderMaterial> make_material() {
+static Ref<ShaderMaterial> make_material(const String &p_instance_uniform = String()) {
 	Ref<ShaderMaterial> material;
 	material.instantiate();
+
+	if (!p_instance_uniform.is_empty()) {
+		Ref<Shader> shader;
+		shader.instantiate();
+		shader->set_code(vformat("shader_type canvas_item;\ninstance uniform vec4 %s;\n\nvoid fragment() {\n\tCOLOR = %s;\n}\n", p_instance_uniform, p_instance_uniform));
+		material->set_shader(shader);
+	}
+
 	return material;
+}
+
+static bool exposes_instance_shader_parameter(CanvasItem *p_item, const String &p_name) {
+	List<PropertyInfo> properties;
+	p_item->get_property_list(&properties);
+
+	for (const PropertyInfo &property : properties) {
+		if (String(property.name) == "instance_shader_parameters/" + p_name) {
+			return true;
+		}
+	}
+	return false;
 }
 
 TEST_CASE("[SceneTree][CanvasItem] Instance shader parameters are refreshed when material changes") {
@@ -131,7 +152,7 @@ TEST_CASE("[SceneTree][CanvasItem] Instance shader parameters are refreshed when
 	Sprite2D *parent = make_sprite(root);
 	Sprite2D *child = make_sprite(parent);
 	Sprite2D *grandchild = make_sprite(child);
-	Ref<ShaderMaterial> material = make_material();
+	Ref<ShaderMaterial> material = make_material("a");
 
 	parent->set_material(material);
 	child->set_use_parent_material(true);
@@ -154,16 +175,25 @@ TEST_CASE("[SceneTree][CanvasItem] Instance shader parameters are refreshed when
 	}
 
 	SUBCASE("Child, after the parent material was replaced") {
+		CHECK(exposes_instance_shader_parameter(child, "a"));
+
 		SIGNAL_WATCH(child, CoreStringName(property_list_changed));
-		parent->set_material(make_material());
+		parent->set_material(make_material("b"));
 		SIGNAL_CHECK("property_list_changed", empty_args);
 		SIGNAL_UNWATCH(child, CoreStringName(property_list_changed));
+
+		CHECK(exposes_instance_shader_parameter(child, "b"));
+		CHECK_FALSE(exposes_instance_shader_parameter(child, "a"));
 	}
 
 	SUBCASE("Grandchild, after its parent stopped using the parent material") {
 		SIGNAL_WATCH(grandchild, CoreStringName(property_list_changed));
+		CHECK(exposes_instance_shader_parameter(grandchild, "a"));
+
 		child->set_use_parent_material(false);
 		SIGNAL_CHECK("property_list_changed", empty_args);
+		CHECK_FALSE(exposes_instance_shader_parameter(grandchild, "a"));
+
 		material->notify_property_list_changed();
 		SIGNAL_CHECK_FALSE("property_list_changed");
 		SIGNAL_UNWATCH(grandchild, CoreStringName(property_list_changed));
@@ -172,12 +202,18 @@ TEST_CASE("[SceneTree][CanvasItem] Instance shader parameters are refreshed when
 	SUBCASE("Items reparented to another item") {
 		Sprite2D *other = make_sprite(root);
 		Array two_empty_args = { {}, {} };
+		CHECK(exposes_instance_shader_parameter(child, "a"));
+
 		SIGNAL_WATCH(child, CoreStringName(property_list_changed));
 		SIGNAL_WATCH(grandchild, CoreStringName(property_list_changed));
 		child->reparent(other);
 		SIGNAL_CHECK("property_list_changed", two_empty_args);
 		SIGNAL_UNWATCH(child, CoreStringName(property_list_changed));
 		SIGNAL_UNWATCH(grandchild, CoreStringName(property_list_changed));
+
+		// The new parent has no material, so neither item resolves to the parameter anymore.
+		CHECK_FALSE(exposes_instance_shader_parameter(child, "a"));
+		CHECK_FALSE(exposes_instance_shader_parameter(grandchild, "a"));
 		memdelete(other);
 	}
 

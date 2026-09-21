@@ -573,6 +573,18 @@ void RendererCanvasCull::canvas_item_initialize(RID p_rid) {
 	instance->self = p_rid;
 }
 
+void RendererCanvasCull::_queue_parent_material_children_update(Item *p_item) {
+	// Items using the parent material resolve their material through this item, so they have to be
+	// updated too when the material this item resolves to changes.
+	for (int i = 0; i < p_item->child_items.size(); i++) {
+		Item *child = p_item->child_items[i];
+		if (child->use_parent_material) {
+			_item_queue_update(child, true);
+			_queue_parent_material_children_update(child);
+		}
+	}
+}
+
 void RendererCanvasCull::canvas_item_set_parent(RID p_item, RID p_parent) {
 	Item *canvas_item = canvas_item_owner.get_or_null(p_item);
 	ERR_FAIL_NULL(canvas_item);
@@ -615,6 +627,12 @@ void RendererCanvasCull::canvas_item_set_parent(RID p_item, RID p_parent) {
 	}
 
 	canvas_item->parent = p_parent;
+
+	if (canvas_item->use_parent_material) {
+		// The item now resolves its material through a different chain of parents.
+		_item_queue_update(canvas_item, true);
+		_queue_parent_material_children_update(canvas_item);
+	}
 }
 
 void RendererCanvasCull::canvas_item_set_visible(RID p_item, bool p_visible) {
@@ -1980,6 +1998,7 @@ void RendererCanvasCull::canvas_item_set_material(RID p_item, RID p_material) {
 
 	canvas_item->material = p_material;
 	_item_queue_update(canvas_item, true);
+	_queue_parent_material_children_update(canvas_item);
 }
 
 void RendererCanvasCull::canvas_item_set_use_parent_material(RID p_item, bool p_enable) {
@@ -1988,6 +2007,7 @@ void RendererCanvasCull::canvas_item_set_use_parent_material(RID p_item, bool p_
 
 	canvas_item->use_parent_material = p_enable;
 	_item_queue_update(canvas_item, true);
+	_queue_parent_material_children_update(canvas_item);
 }
 
 void RendererCanvasCull::canvas_item_set_instance_shader_parameter(RID p_item, const StringName &p_parameter, const Variant &p_value) {
