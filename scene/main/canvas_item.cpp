@@ -307,6 +307,10 @@ void CanvasItem::_enter_canvas() {
 
 	queue_redraw();
 
+	if (use_parent_material) {
+		_update_material_connection(material);
+		_notify_instance_shader_parameters_changed();
+	}
 	notification(NOTIFICATION_ENTER_CANVAS);
 }
 
@@ -1294,21 +1298,60 @@ bool CanvasItem::is_draw_behind_parent_enabled() const {
 	return behind;
 }
 
+void CanvasItem::_notify_instance_shader_parameters_changed() {
+	notify_property_list_changed();
+
+	// Items using parent material are all affected, too.
+	for (uint32_t i = 0; i < data.canvas_item_children.size(); i++) {
+		CanvasItem *child = data.canvas_item_children[i];
+		if (!child->top_level && child->use_parent_material) {
+			child->_notify_instance_shader_parameters_changed();
+		}
+	}
+}
+
+void CanvasItem::_update_material_connection(const Ref<Material> &p_previous_material) {
+	const Callable notify_callable = callable_mp(this, &CanvasItem::_notify_instance_shader_parameters_changed);
+
+	if (p_previous_material.is_valid() && p_previous_material != material && p_previous_material->is_connected(CoreStringName(property_list_changed), notify_callable)) {
+		p_previous_material->disconnect(CoreStringName(property_list_changed), notify_callable);
+	}
+
+	if (material.is_null()) {
+		return;
+	}
+	const bool connected = material->is_connected(CoreStringName(property_list_changed), notify_callable);
+	// Items using the parent material ignore their own material entirely, even if the parent has none.
+	// Only items without a parent item to inherit from, such as top level ones, fall back to it.
+	const bool uses_own_material = !use_parent_material || !is_inside_tree() || get_parent_item() == nullptr;
+	if (connected != uses_own_material) {
+		if (connected) {
+			material->disconnect(CoreStringName(property_list_changed), notify_callable);
+		} else {
+			material->connect(CoreStringName(property_list_changed), notify_callable);
+		}
+	}
+}
+
 void CanvasItem::set_material(const Ref<Material> &p_material) {
 	ERR_THREAD_GUARD;
+	Ref<Material> old_material = material;
 	material = p_material;
 	RID rid;
 	if (material.is_valid()) {
 		rid = material->get_rid();
 	}
 	RS::get_singleton()->canvas_item_set_material(canvas_item, rid);
-	notify_property_list_changed(); //properties for material exposed
+	_update_material_connection(old_material);
+	_notify_instance_shader_parameters_changed();
 }
 
 void CanvasItem::set_use_parent_material(bool p_use_parent_material) {
 	ERR_THREAD_GUARD;
 	use_parent_material = p_use_parent_material;
 	RS::get_singleton()->canvas_item_set_use_parent_material(canvas_item, p_use_parent_material);
+	_update_material_connection(material);
+	_notify_instance_shader_parameters_changed();
 }
 
 void CanvasItem::set_instance_shader_parameter(const StringName &p_name, const Variant &p_value) {

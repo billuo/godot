@@ -179,6 +179,8 @@ private:
 	void _update_texture_filter_changed(bool p_propagate);
 
 	void _notify_transform_deferred();
+	void _notify_instance_shader_parameters_changed();
+	void _update_material_connection(const Ref<Material> &p_previous_material);
 	const StringName *_instance_shader_parameter_get_remap(const StringName &p_name) const;
 
 protected:
