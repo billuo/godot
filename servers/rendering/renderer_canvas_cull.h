@@ -106,6 +106,7 @@ public:
 	};
 
 	void _item_queue_update(Item *p_item, bool p_update_dependencies);
+	void _queue_parent_material_children_update(Item *p_item);
 	SelfList<Item>::List _item_update_list;
 
 	struct ItemIndexSort {
