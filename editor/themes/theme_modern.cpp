@@ -606,6 +606,8 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		p_theme->set_color("font_outline_color", "LinkButton", p_config.font_outline_color);
 
 		p_theme->set_constant("outline_size", "LinkButton", 0);
+		// Distance between the text baseline and the underline drawn by LinkButton.
+		p_theme->set_constant("underline_spacing", "LinkButton", EDSCALE_RND(2));
 	}
 
 	// Tree & ItemList.
@@ -773,10 +775,14 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 			p_theme->set_stylebox("hovered", "ItemList", p_config.flat_button_hover);
 			p_theme->set_stylebox("hovered_selected", "ItemList", p_config.flat_button_hover_pressed);
 			p_theme->set_stylebox("hovered_selected_focus", "ItemList", p_config.focus_style);
+			p_theme->set_stylebox("disabled", "ItemList", p_config.base_empty_style);
+			p_theme->set_stylebox("disabled_hovered", "ItemList", p_config.base_empty_style);
 			p_theme->set_color(SceneStringName(font_color), "ItemList", p_config.font_color);
 			p_theme->set_color("font_hovered_color", "ItemList", p_config.font_hover_color);
 			p_theme->set_color("font_hovered_selected_color", "ItemList", p_config.font_hover_pressed_color);
 			p_theme->set_color("font_selected_color", "ItemList", p_config.font_pressed_color);
+			p_theme->set_color("font_disabled_color", "ItemList", p_config.font_disabled_color);
+			p_theme->set_color("font_disabled_hovered_color", "ItemList", p_config.font_disabled_color);
 			p_theme->set_color("font_outline_color", "ItemList", p_config.font_outline_color);
 			p_theme->set_color("guide_color", "ItemList", Color(1, 1, 1, 0));
 			p_theme->set_color("scroll_hint_color", "ItemList", Color(0, 0, 0, p_config.dark_theme ? 1.0 : 0.5));
@@ -868,7 +874,10 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 
 		p_theme->set_constant("side_margin", "TabContainer", 0);
 		p_theme->set_constant("outline_size", "TabContainer", 0);
+		// Separation between a tab's icon and its text.
+		p_theme->set_constant("icon_separation", "TabContainer", EDSCALE_RND(4));
 		p_theme->set_constant("h_separation", "TabBar", EDSCALE_RND(4));
+		p_theme->set_constant("tab_separation", "TabBar", EDSCALE_RND(4));
 		p_theme->set_constant("outline_size", "TabBar", 0);
 		p_theme->set_constant("hover_switch_wait_msec", "TabBar", p_config.dragging_hover_wait_msec);
 	}
@@ -966,6 +975,20 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		p_theme->set_icon("v_grabber", "SplitContainer", p_theme->get_icon(SNAME("GuiVsplitter"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("grabber", "VSplitContainer", p_theme->get_icon(SNAME("GuiVsplitter"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("grabber", "HSplitContainer", p_theme->get_icon(SNAME("GuiHsplitter"), EditorStringName(EditorIcons)));
+		// The `grabber` icon is only read from the base `SplitContainer` type, but it is
+		// listed here as well to keep the whole set of split handle theme items defined
+		// by the editor theme instead of falling back to the default theme.
+		p_theme->set_icon("grabber", "SplitContainer", p_theme->get_icon(SNAME("GuiHsplitter"), EditorStringName(EditorIcons)));
+		// Extended hover area used with the `interface/touchscreen/enable_touch_optimizations`
+		// editor setting.
+		p_theme->set_icon("h_touch_dragger", "SplitContainer", p_theme->get_icon(SNAME("GuiHsplitter"), EditorStringName(EditorIcons)));
+		p_theme->set_icon("v_touch_dragger", "SplitContainer", p_theme->get_icon(SNAME("GuiVsplitter"), EditorStringName(EditorIcons)));
+		p_theme->set_icon("touch_dragger", "HSplitContainer", p_theme->get_icon(SNAME("GuiHsplitter"), EditorStringName(EditorIcons)));
+		p_theme->set_icon("touch_dragger", "VSplitContainer", p_theme->get_icon(SNAME("GuiVsplitter"), EditorStringName(EditorIcons)));
+		p_theme->set_stylebox("split_bar_background", "SplitContainer", p_config.base_empty_style);
+		p_theme->set_color("touch_dragger_color", "SplitContainer", p_config.contrast_color_1);
+		p_theme->set_color("touch_dragger_hover_color", "SplitContainer", p_config.contrast_color_2);
+		p_theme->set_color("touch_dragger_pressed_color", "SplitContainer", p_config.accent_color);
 
 		p_theme->set_constant("separation", "SplitContainer", EDSCALE_RND(p_config.base_margin * 0.75));
 		p_theme->set_constant("separation", "HSplitContainer", EDSCALE_RND(p_config.base_margin * 0.75));
@@ -1105,6 +1128,7 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 			p_theme->set_color("font_disabled_color", "PopupMenu", p_config.font_disabled_color);
 			p_theme->set_color("font_separator_color", "PopupMenu", p_config.font_disabled_color);
 			p_theme->set_color("font_outline_color", "PopupMenu", p_config.font_outline_color);
+			p_theme->set_color("font_separator_outline_color", "PopupMenu", Color(0, 0, 0));
 
 			p_theme->set_icon("checked", "PopupMenu", p_theme->get_icon(SNAME("GuiChecked"), EditorStringName(EditorIcons)));
 			p_theme->set_icon("unchecked", "PopupMenu", p_theme->get_icon(SNAME("GuiUnchecked"), EditorStringName(EditorIcons)));
@@ -1125,6 +1149,11 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 			p_theme->set_constant("v_separation", "PopupMenu", v_sep);
 			p_theme->set_constant("search_bar_separation", "PopupMenu", v_sep);
 			p_theme->set_constant("outline_size", "PopupMenu", 0);
+			p_theme->set_constant("separator_outline_size", "PopupMenu", 0);
+			// Width of one indentation level of a menu item.
+			p_theme->set_constant("indent", "PopupMenu", EDSCALE_RND(10));
+			p_theme->set_constant("gutter_compact", "PopupMenu", 1);
+			p_theme->set_constant("icon_max_width", "PopupMenu", 0);
 			p_theme->set_constant("item_start_padding", "PopupMenu", p_config.popup_margin);
 			p_theme->set_constant("item_end_padding", "PopupMenu", p_config.popup_margin);
 		}
@@ -1194,6 +1223,11 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		// HSlider.
 		p_theme->set_icon("grabber_highlight", "HSlider", p_theme->get_icon(SNAME("GuiSliderGrabberHl"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("grabber", "HSlider", p_theme->get_icon(SNAME("GuiSliderGrabber"), EditorStringName(EditorIcons)));
+		// The editor does not draw ticks or disabled grabbers, so they are kept as an
+		// empty texture instead of falling back to the (potentially scaled) default theme.
+		p_theme->set_icon("grabber_disabled", "HSlider", empty_icon);
+		p_theme->set_icon("tick", "HSlider", empty_icon);
+		p_theme->set_constant("tick_offset", "HSlider", 0);
 		p_theme->set_stylebox("slider", "HSlider", style_h_slider);
 		p_theme->set_stylebox("grabber_area", "HSlider", EditorThemeManager::make_flat_stylebox(p_config.contrast_color_1, 0, background_margin, 0, background_margin, p_config.corner_radius));
 		p_theme->set_stylebox("grabber_area_highlight", "HSlider", EditorThemeManager::make_flat_stylebox(p_config.contrast_color_1, 0, background_margin, 0, background_margin));
@@ -1206,6 +1240,9 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		// VSlider.
 		p_theme->set_icon("grabber", "VSlider", p_theme->get_icon(SNAME("GuiSliderGrabber"), EditorStringName(EditorIcons)));
 		p_theme->set_icon("grabber_highlight", "VSlider", p_theme->get_icon(SNAME("GuiSliderGrabberHl"), EditorStringName(EditorIcons)));
+		p_theme->set_icon("grabber_disabled", "VSlider", empty_icon);
+		p_theme->set_icon("tick", "VSlider", empty_icon);
+		p_theme->set_constant("tick_offset", "VSlider", 0);
 		p_theme->set_stylebox("slider", "VSlider", style_v_slider);
 		p_theme->set_stylebox("grabber_area", "VSlider", EditorThemeManager::make_flat_stylebox(p_config.contrast_color_1, background_margin, 0, background_margin, 0, p_config.corner_radius));
 		p_theme->set_stylebox("grabber_area_highlight", "VSlider", EditorThemeManager::make_flat_stylebox(p_config.contrast_color_1, background_margin, 0, background_margin, 0));
@@ -1233,6 +1270,23 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 		p_theme->set_constant("shadow_offset_y", "RichTextLabel", EDSCALE_RND(1));
 		p_theme->set_constant("shadow_outline_size", "RichTextLabel", EDSCALE_RND(1));
 		p_theme->set_constant("outline_size", "RichTextLabel", 0);
+		// Tables and highlighted text ranges used by the built-in documentation.
+		p_theme->set_constant("line_separation", "RichTextLabel", 0);
+		p_theme->set_constant("paragraph_separation", "RichTextLabel", 0);
+		p_theme->set_constant("table_h_separation", "RichTextLabel", EDSCALE_RND(12));
+		p_theme->set_constant("table_v_separation", "RichTextLabel", EDSCALE_RND(12));
+		p_theme->set_constant("text_highlight_h_padding", "RichTextLabel", EDSCALE_RND(12));
+		p_theme->set_constant("text_highlight_v_padding", "RichTextLabel", EDSCALE_RND(12));
+		p_theme->set_constant("underline_alpha", "RichTextLabel", 50);
+		p_theme->set_constant("strikethrough_alpha", "RichTextLabel", 50);
+		p_theme->set_color("font_selected_color", "RichTextLabel", p_config.selection_color);
+		p_theme->set_color("table_odd_row_bg", "RichTextLabel", p_config.surface_low_color);
+		p_theme->set_color("table_even_row_bg", "RichTextLabel", p_config.surface_base_color);
+		p_theme->set_color("table_border", "RichTextLabel", p_config.contrast_color_1);
+		// Horizontal rule bitmap, stretched by RichTextLabel to the requested width.
+		Ref<Image> solid_img = Image::create_empty(2, 2, false, Image::FORMAT_RGBA8);
+		solid_img->fill(Color(1, 1, 1, 1));
+		p_theme->set_icon("horizontal_rule", "RichTextLabel", ImageTexture::create_from_image(solid_img));
 
 		// Label.
 
@@ -1379,6 +1433,9 @@ void ThemeModern::populate_standard_styles(const Ref<EditorTheme> &p_theme, Edit
 
 		p_theme->set_color("connection_hover_tint_color", "GraphEdit", p_config.dark_color_2);
 		p_theme->set_constant("connection_hover_thickness", "GraphEdit", 0);
+		// Extra hover area around graph ports, in addition to the port icon itself.
+		p_theme->set_constant("port_hotzone_inner_extent", "GraphEdit", EDSCALE_RND(4));
+		p_theme->set_constant("port_hotzone_outer_extent", "GraphEdit", EDSCALE_RND(8));
 		p_theme->set_color("connection_valid_target_tint_color", "GraphEdit", p_config.extra_border_color_1);
 		p_theme->set_color("connection_rim_color", "GraphEdit", p_config.tree_panel_style->get_bg_color());
 
@@ -1687,6 +1744,16 @@ void ThemeModern::populate_editor_styles(const Ref<EditorTheme> &p_theme, Editor
 		// Scroll hints.
 		p_theme->set_color("scroll_hint_vertical_color", "ScrollContainer", Color(0, 0, 0, p_config.dark_theme ? 1.0 : 0.5));
 		p_theme->set_color("scroll_hint_horizontal_color", "ScrollContainer", Color(0, 0, 0, p_config.dark_theme ? 1.0 : 0.5));
+		// Scroll hints are disabled in the editor, which means they are kept as an empty
+		// texture rather than being left undefined (in which case the fallback default
+		// theme would provide icons scaled by `gui/theme/default_theme_scale`).
+		Ref<Texture2D> empty_texture = memnew(ImageTexture);
+		p_theme->set_icon("scroll_hint_vertical", "ScrollContainer", empty_texture);
+		p_theme->set_icon("scroll_hint_horizontal", "ScrollContainer", empty_texture);
+		p_theme->set_icon("scroll_hint", "Tree", empty_texture);
+		p_theme->set_icon("scroll_hint", "ItemList", empty_texture);
+		p_theme->set_constant("scrollbar_h_separation", "ScrollContainer", 0);
+		p_theme->set_constant("scrollbar_v_separation", "ScrollContainer", 0);
 
 		// This stylebox is used in 3d and 2d viewports (no borders).
 		Ref<StyleBoxFlat> style_content_panel_vp = p_config.content_panel_style->duplicate();
