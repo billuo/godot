@@ -172,6 +172,7 @@ private:
 	void _load_state();
 
 	void _update_theme();
+	void _update_filter_buttons();
 	void _editor_settings_changed();
 
 protected:
