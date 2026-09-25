@@ -80,6 +80,7 @@ private:
 	void _scene_tab_exit();
 	void _scene_tab_input(const Ref<InputEvent> &p_input);
 	void _scene_tabs_resized();
+	void _update_tabbar_add_placeholder();
 
 	void _update_tab_titles();
 	void _reposition_active_tab(int p_to_index);

@@ -54,8 +54,17 @@
 #include "scene/gui/tab_bar.h"
 #include "scene/gui/texture_rect.h"
 
+void EditorSceneTabs::_update_tabbar_add_placeholder() {
+	scene_tab_add_ph->set_custom_minimum_size(scene_tab_add->get_minimum_size());
+}
+
 void EditorSceneTabs::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_POST_ENTER_TREE: {
+			// The button can only resolve the editor theme once the subtree is in the tree.
+			_update_tabbar_add_placeholder();
+		} break;
+
 		case NOTIFICATION_THEME_CHANGED: {
 			tabbar_panel->add_theme_style_override(SceneStringName(panel), get_theme_stylebox(SNAME("tabbar_background"), SNAME("TabContainer")));
 			scene_tabs->add_theme_constant_override("icon_max_width", get_theme_constant(SNAME("class_icon_size"), EditorStringName(Editor)));
@@ -66,7 +75,7 @@ void EditorSceneTabs::_notification(int p_what) {
 			scene_tab_add->set_button_icon(get_editor_theme_icon(SNAME("Add")));
 			scene_tab_add->add_theme_color_override("icon_normal_color", Color(0.6f, 0.6f, 0.6f, 0.8f));
 
-			scene_tab_add_ph->set_custom_minimum_size(scene_tab_add->get_minimum_size());
+			_update_tabbar_add_placeholder();
 		} break;
 
 		case EditorSettings::NOTIFICATION_EDITOR_SETTINGS_CHANGED: {
@@ -517,6 +526,7 @@ EditorSceneTabs::EditorSceneTabs() {
 
 	scene_tab_add_ph = memnew(Control);
 	scene_tab_add_ph->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+	// Provisional; corrected in NOTIFICATION_POST_ENTER_TREE and NOTIFICATION_THEME_CHANGED.
 	scene_tab_add_ph->set_custom_minimum_size(scene_tab_add->get_minimum_size());
 	tabbar_container->add_child(scene_tab_add_ph);
 

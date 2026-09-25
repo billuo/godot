@@ -109,21 +109,6 @@ void EditorLog::_update_theme() {
 	log->add_theme_font_size_override("mono_font_size", font_size);
 	log->end_bulk_theme_override();
 
-	const String wide_text = "MM";
-
-	Button *button = type_filter_map[MSG_TYPE_STD]->toggle_button;
-	button->set_button_icon(get_editor_theme_icon(SNAME("Popup")));
-	button->set_custom_minimum_size(Vector2(button->get_minimum_size_for_text_and_icon(wide_text, button->get_button_icon()).x * EDSCALE, 0));
-	button = type_filter_map[MSG_TYPE_ERROR]->toggle_button;
-	button->set_button_icon(get_editor_theme_icon(SNAME("StatusError")));
-	button->set_custom_minimum_size(Vector2(button->get_minimum_size_for_text_and_icon(wide_text, button->get_button_icon()).x * EDSCALE, 0));
-	button = type_filter_map[MSG_TYPE_WARNING]->toggle_button;
-	button->set_button_icon(get_editor_theme_icon(SNAME("StatusWarning")));
-	button->set_custom_minimum_size(Vector2(button->get_minimum_size_for_text_and_icon(wide_text, button->get_button_icon()).x * EDSCALE, 0));
-	button = type_filter_map[MSG_TYPE_EDITOR]->toggle_button;
-	button->set_button_icon(get_editor_theme_icon(SNAME("Edit")));
-	button->set_custom_minimum_size(Vector2(button->get_minimum_size_for_text_and_icon(wide_text, button->get_button_icon()).x * EDSCALE, 0));
-
 	clear_button->set_button_icon(get_editor_theme_icon(SNAME("Clear")));
 	collapse_button->set_button_icon(get_editor_theme_icon(SNAME("CombineLines")));
 	search_box->set_right_icon(get_editor_theme_icon(SNAME("Search")));
@@ -133,6 +118,28 @@ void EditorLog::_update_theme() {
 	theme_cache.warning_color = get_theme_color(SNAME("warning_color"), EditorStringName(Editor));
 	theme_cache.warning_icon = get_editor_theme_icon(SNAME("Warning"));
 	theme_cache.message_color = get_theme_color(SceneStringName(font_color), EditorStringName(Editor)) * Color(1, 1, 1, 0.6);
+}
+
+void EditorLog::_update_filter_buttons() {
+	// A control outside the tree has no theme context, so icons and sizes are resolved here.
+	struct FilterButtonIcon {
+		MessageType type;
+		const char *icon;
+	};
+	static const FilterButtonIcon filter_button_icons[] = {
+		{ MSG_TYPE_STD, "Popup" },
+		{ MSG_TYPE_ERROR, "StatusError" },
+		{ MSG_TYPE_WARNING, "StatusWarning" },
+		{ MSG_TYPE_EDITOR, "Edit" },
+	};
+
+	const String wide_text = "MM";
+
+	for (const FilterButtonIcon &filter_icon : filter_button_icons) {
+		Button *button = type_filter_map[filter_icon.type]->toggle_button;
+		button->set_button_icon(get_editor_theme_icon(filter_icon.icon));
+		button->set_custom_minimum_size(Vector2(button->get_minimum_size_for_text_and_icon(wide_text, button->get_button_icon()).x * EDSCALE, 0));
+	}
 }
 
 void EditorLog::_editor_settings_changed() {
@@ -155,6 +162,10 @@ void EditorLog::_notification(int p_what) {
 				_save_state();
 				save_state_timer->stop();
 			}
+		} break;
+
+		case NOTIFICATION_POST_ENTER_TREE: {
+			_update_filter_buttons();
 		} break;
 
 		case NOTIFICATION_THEME_CHANGED: {
