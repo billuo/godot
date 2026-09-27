@@ -702,10 +702,10 @@ Error ResourceLoader::load_threaded_request(const String &p_path, const String &
 	return token.is_valid() ? OK : FAILED;
 }
 
-ResourceLoader::LoadToken *ResourceLoader::_load_threaded_request_reuse_user_token(const String &p_path) {
-	HashMap<String, LoadToken *>::Iterator E = user_load_tokens.find(p_path);
+ResourceLoader::LoadToken *ResourceLoader::_load_threaded_request_reuse_user_token(const String &p_local_path) {
+	HashMap<String, LoadToken *>::Iterator E = user_load_tokens.find(p_local_path);
 	if (E) {
-		print_verbose("load_threaded_request(): Another threaded load for resource path '" + p_path + "' has been initiated. Not an error.");
+		print_verbose("load_threaded_request(): Another threaded load for resource path '" + p_local_path + "' has been initiated. Not an error.");
 		LoadToken *token = E->value;
 		token->user_rc++;
 		return token;
@@ -714,11 +714,14 @@ ResourceLoader::LoadToken *ResourceLoader::_load_threaded_request_reuse_user_tok
 	}
 }
 
-void ResourceLoader::_load_threaded_request_setup_user_token(LoadToken *p_token, const String &p_path) {
-	p_token->user_path = p_path;
+void ResourceLoader::_load_threaded_request_setup_user_token(LoadToken *p_token, const String &p_local_path) {
+	// Keyed by the resolved local path: every spelling of the same resource
+	// (absolute, relative, with "..", or a UID) attaches to the same token, so
+	// user_rc counts the requests still outstanding for that resource as a whole.
+	p_token->user_path = p_local_path;
 	p_token->reference(); // Extra RC until all user requests have been gotten.
 	p_token->user_rc = 1;
-	user_load_tokens[p_path] = p_token;
+	user_load_tokens[p_local_path] = p_token;
 	print_lt("REQUEST: user load tokens: " + itos(user_load_tokens.size()));
 }
 
@@ -760,7 +763,7 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 		MutexLock thread_load_lock(thread_load_mutex);
 
 		if (p_for_user) {
-			LoadToken *existing_token = _load_threaded_request_reuse_user_token(p_path);
+			LoadToken *existing_token = _load_threaded_request_reuse_user_token(local_path);
 			if (existing_token) {
 				return Ref<LoadToken>(existing_token);
 			}
@@ -772,7 +775,7 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 				if (p_for_user) {
 					// Load task exists, with no user tokens at the moment.
 					// Let's "attach" to it.
-					_load_threaded_request_setup_user_token(load_token.ptr(), p_path);
+					_load_threaded_request_setup_user_token(load_token.ptr(), local_path);
 				}
 				return load_token;
 			} else {
@@ -785,7 +788,7 @@ Ref<ResourceLoader::LoadToken> ResourceLoader::_load_start(const String &p_path,
 		load_token.instantiate();
 		load_token->local_path = local_path;
 		if (p_for_user) {
-			_load_threaded_request_setup_user_token(load_token.ptr(), p_path);
+			_load_threaded_request_setup_user_token(load_token.ptr(), local_path);
 		}
 
 		//create load task
@@ -885,18 +888,18 @@ float ResourceLoader::_dependency_get_progress(const String &p_path) {
 }
 
 ResourceLoader::ThreadLoadStatus ResourceLoader::load_threaded_get_status(const String &p_path, float *r_progress) {
+	String local_path = _validate_local_path(p_path);
 	bool ensure_progress = false;
 	ThreadLoadStatus status = THREAD_LOAD_IN_PROGRESS;
 	{
 		MutexLock thread_load_lock(thread_load_mutex);
 
-		if (!user_load_tokens.has(p_path)) {
+		if (!user_load_tokens.has(local_path)) {
 			print_verbose("load_threaded_get_status(): No threaded load for resource path '" + p_path + "' has been initiated or its result has already been collected.");
 			return THREAD_LOAD_INVALID_RESOURCE;
 		}
 
-		String local_path = _validate_local_path(p_path);
-		LoadToken *load_token = user_load_tokens[p_path];
+		LoadToken *load_token = user_load_tokens[local_path];
 		ThreadLoadTask *load_task_ptr;
 
 		if (load_token->task_if_unregistered) {
@@ -938,7 +941,8 @@ Ref<Resource> ResourceLoader::load_threaded_get(const String &p_path, Error *r_e
 	{
 		MutexLock thread_load_lock(thread_load_mutex);
 
-		if (!user_load_tokens.has(p_path)) {
+		String local_path = _validate_local_path(p_path);
+		if (!user_load_tokens.has(local_path)) {
 			print_verbose("load_threaded_get(): No threaded load for resource path '" + p_path + "' has been initiated or its result has already been collected.");
 			if (r_error) {
 				*r_error = ERR_INVALID_PARAMETER;
@@ -946,7 +950,7 @@ Ref<Resource> ResourceLoader::load_threaded_get(const String &p_path, Error *r_e
 			return Ref<Resource>();
 		}
 
-		LoadToken *load_token = user_load_tokens[p_path];
+		LoadToken *load_token = user_load_tokens[local_path];
 		DEV_ASSERT(load_token->user_rc >= 1);
 
 		// Support userland requesting on the main thread before the load is reported to be complete.
@@ -987,7 +991,7 @@ Ref<Resource> ResourceLoader::load_threaded_get(const String &p_path, Error *r_e
 		load_token->user_rc--;
 		if (load_token->user_rc == 0) {
 			load_token->user_path.clear();
-			user_load_tokens.erase(p_path);
+			user_load_tokens.erase(local_path);
 			if (load_token->unreference()) {
 				memdelete(load_token);
 				load_token = nullptr;
