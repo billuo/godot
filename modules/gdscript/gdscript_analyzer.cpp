@@ -3135,7 +3135,9 @@ void GDScriptAnalyzer::reduce_await(GDScriptParser::AwaitNode *p_await) {
 
 #ifdef DEBUG_ENABLED
 	GDScriptParser::DataType to_await_type = p_await->to_await->type_constraint;
-	if (!to_await_type.is_coroutine && !to_await_type.is_variant() && to_await_type.builtin_type != Variant::SIGNAL) {
+	// A bodyless method is a coroutine only if it's declared with `@async`, in which case the analyzer
+	// marks the call as awaitable instead of setting `is_coroutine`.
+	if (!to_await_type.is_coroutine && !to_await_type.is_async && !to_await_type.is_variant() && to_await_type.builtin_type != Variant::SIGNAL) {
 		parser->push_warning(p_await, GDScriptWarning::REDUNDANT_AWAIT);
 	}
 #endif // DEBUG_ENABLED
@@ -6048,6 +6050,8 @@ bool GDScriptAnalyzer::get_function_signature(GDScriptParser::Node *p_source, bo
 		r_return_type = p_is_constructor ? p_base_type : found_function->return_type_constraint;
 		r_return_type.is_meta_type = false;
 		r_return_type.is_coroutine = found_function->is_coroutine;
+		// A bodyless method doesn't contain `await`, so it can only be declared as awaitable.
+		r_return_type.is_async = found_function->is_awaitable();
 
 		return true;
 	}

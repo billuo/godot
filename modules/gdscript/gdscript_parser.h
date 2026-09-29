@@ -127,6 +127,7 @@ public:
 		bool is_meta_type = false;
 		bool is_pseudo_type = false; // For global names that can't be used standalone.
 		bool is_coroutine = false; // For function calls.
+		bool is_async = false; // For function calls that can be awaited, see `FunctionNode::is_awaitable()`.
 
 		Variant::Type builtin_type = Variant::NIL;
 		StringName native_type;
@@ -250,6 +251,7 @@ public:
 			is_meta_type = p_other.is_meta_type;
 			is_pseudo_type = p_other.is_pseudo_type;
 			is_coroutine = p_other.is_coroutine;
+			is_async = p_other.is_async;
 			builtin_type = p_other.builtin_type;
 			native_type = p_other.native_type;
 			enum_type = p_other.enum_type;
@@ -888,6 +890,7 @@ public:
 		bool is_abstract = false;
 		bool is_static = false; // For lambdas it's determined in the analyzer.
 		bool is_coroutine = false;
+		bool is_async = false; // Declared as a coroutine with the `@async` annotation.
 		Variant rpc_config;
 		MethodInfo info;
 		LambdaNode *source_lambda = nullptr;
@@ -905,6 +908,11 @@ public:
 		bool resolved_body = false;
 
 		_FORCE_INLINE_ bool is_vararg() const { return rest_parameter != nullptr; }
+
+		// Whether the function is a coroutine, i.e. whether `await` on a call to it is meaningful.
+		// A function with a body is a coroutine if the body contains `await` (see `is_coroutine`),
+		// while a bodyless function must be declared with `@async`.
+		_FORCE_INLINE_ bool is_awaitable() const { return is_coroutine || is_async; }
 
 		FunctionNode() {
 			type = FUNCTION;
@@ -1612,6 +1620,7 @@ private:
 	bool icon_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class);
 	bool static_unload_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class);
 	bool abstract_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class);
+	bool async_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class);
 	bool onready_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class);
 	template <PropertyHint t_hint, Variant::Type t_type>
 	bool export_annotations(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class);

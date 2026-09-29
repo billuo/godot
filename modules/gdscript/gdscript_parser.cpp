@@ -147,6 +147,7 @@ GDScriptParser::GDScriptParser() {
 		register_annotation(MethodInfo("@icon", PropertyInfo(Variant::STRING, "icon_path")), AnnotationInfo::SCRIPT, &GDScriptParser::icon_annotation);
 		register_annotation(MethodInfo("@static_unload"), AnnotationInfo::SCRIPT, &GDScriptParser::static_unload_annotation);
 		register_annotation(MethodInfo("@abstract"), AnnotationInfo::SCRIPT | AnnotationInfo::CLASS | AnnotationInfo::FUNCTION, &GDScriptParser::abstract_annotation);
+		register_annotation(MethodInfo("@async"), AnnotationInfo::FUNCTION, &GDScriptParser::async_annotation);
 		// Onready annotation.
 		register_annotation(MethodInfo("@onready"), AnnotationInfo::VARIABLE, &GDScriptParser::onready_annotation);
 		// Export annotations.
@@ -4514,6 +4515,20 @@ bool GDScriptParser::abstract_annotation(AnnotationNode *p_annotation, Node *p_t
 		return true;
 	}
 	ERR_FAIL_V_MSG(false, R"("@abstract" annotation can only be applied to classes and functions.)");
+}
+
+bool GDScriptParser::async_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class) {
+	if (p_target->type != Node::FUNCTION) {
+		ERR_FAIL_V_MSG(false, R"("@async" annotation can only be applied to functions.)");
+	}
+	FunctionNode *function_node = static_cast<FunctionNode *>(p_target);
+	if (function_node->is_static) {
+		// A static function cannot contain `await`, so it cannot be a coroutine.
+		push_error(R"("@async" annotation cannot be applied to static functions.)", p_annotation);
+		return false;
+	}
+	function_node->is_async = true;
+	return true;
 }
 
 bool GDScriptParser::onready_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class) {
