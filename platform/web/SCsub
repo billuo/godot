@@ -55,6 +55,12 @@ sys_env.AddJSPost([
     "js/patches/patch_em_gl.js",
 ])
 
+# Aliases in Emscripten's GL JavaScript library break when the pthread GL shims
+# are linked in; see the file for details.
+sys_env.AddJSLibraries([
+    "js/patches/patch_em_gl_aliases.js",
+])
+
 if env["javascript_eval"]:
     sys_env.AddJSLibraries(["js/libs/library_godot_javascript_singleton.js"])
 if env["target"] == "editor":
