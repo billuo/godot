@@ -344,11 +344,16 @@ void DisplayServerWindows::_set_mouse_mode_impl(DisplayServerEnums::MouseMode p_
 
 DisplayServerEnums::WindowID DisplayServerWindows::_get_focused_window_or_popup() const {
 	const List<DisplayServerEnums::WindowID>::Element *E = popup_list.back();
-	if (E) {
+	if (E && windows.has(E->get())) {
 		return E->get();
 	}
 
-	return last_focused_window;
+	if (windows.has(last_focused_window)) {
+		return last_focused_window;
+	}
+
+	// Callers index the window map with the result, so never hand out an id it doesn't hold.
+	return DisplayServerEnums::MAIN_WINDOW_ID;
 }
 
 bool DisplayServerWindows::_has_moving_window() const {
@@ -1939,10 +1944,11 @@ DisplayServerEnums::WindowID DisplayServerWindows::create_sub_window(DisplayServ
 	no_redirection_bitmap = OS::get_singleton()->is_layered_allowed() && rendering_driver == "d3d12";
 #endif
 
-	DisplayServerEnums::WindowID window_id = window_id_counter;
+	// Advance the counter before the call: _create_window() can pump messages (the failure
+	// message box, WM_TIMER, ...), and a nested create_sub_window() would otherwise reuse this id.
+	DisplayServerEnums::WindowID window_id = window_id_counter++;
 	Error err = _create_window(window_id, p_mode, p_flags, p_rect, p_exclusive, p_transient_parent, nullptr, no_redirection_bitmap);
 	ERR_FAIL_COND_V_MSG(err != OK, DisplayServerEnums::INVALID_WINDOW_ID, "Failed to create sub window.");
-	++window_id_counter;
 
 #ifdef RD_ENABLED
 	if (rendering_context != nullptr) {
@@ -7381,6 +7387,13 @@ Error DisplayServerWindows::_create_window(DisplayServerEnums::WindowID p_window
 				// processed in the window proc
 				reinterpret_cast<void *>(&wd));
 		if (!wd.hWnd) {
+			// Capture the OS reason before the message box below can clobber the last-error value.
+			const DWORD last_error = GetLastError();
+
+			ERR_PRINT(vformat("CreateWindowExW failed for window %d: %s, rect %s, %d window(s) tracked, %u USER object(s).",
+					id, format_error_message(last_error),
+					Rect2i(Point2i(WindowRect.left, WindowRect.top), Size2i(WindowRect.right - WindowRect.left, WindowRect.bottom - WindowRect.top)),
+					windows.size(), GetGuiResources(GetCurrentProcess(), GR_USEROBJECTS)));
 			MessageBoxW(nullptr, L"Window Creation Error.", L"ERROR", MB_OK | MB_ICONEXCLAMATION);
 			windows.erase(id);
 			ERR_FAIL_V_MSG(ERR_CANT_CREATE, "Failed to create Windows OS window.");
