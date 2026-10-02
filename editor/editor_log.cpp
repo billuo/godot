@@ -133,12 +133,13 @@ void EditorLog::_update_filter_buttons() {
 		{ MSG_TYPE_EDITOR, "Edit" },
 	};
 
-	const String wide_text = "MM";
+	const String wide_text = "0000";
 
 	for (const FilterButtonIcon &filter_icon : filter_button_icons) {
 		Button *button = type_filter_map[filter_icon.type]->toggle_button;
 		button->set_button_icon(get_editor_theme_icon(filter_icon.icon));
-		button->set_custom_minimum_size(Vector2(button->get_minimum_size_for_text_and_icon(wide_text, button->get_button_icon()).x * EDSCALE, 0));
+		// The theme already scales fonts and icons, so don't apply EDSCALE again here.
+		button->set_custom_minimum_size(Vector2(button->get_minimum_size_for_text_and_icon(wide_text, button->get_button_icon()).x, 0));
 	}
 }
 
@@ -169,6 +170,7 @@ void EditorLog::_notification(int p_what) {
 
 		case NOTIFICATION_THEME_CHANGED: {
 			callable_mp(this, &EditorLog::_update_theme).call_deferred();
+			callable_mp(this, &EditorLog::_update_filter_buttons).call_deferred();
 			callable_mp(this, &EditorLog::_rebuild_log).call_deferred();
 		} break;
 	}
