@@ -167,8 +167,11 @@ Error WindowsUtils::copy_and_rename_pdb(const String &p_dll_path) {
 	{
 		// e.g. 999.pdb
 		const uint8_t suffix_size = String::num_characters((int64_t)max_pdb_names - 1) + 4;
-		// e.g. ~lib_ + 1 for the \0
-		const uint8_t min_base_size = 5 + 1;
+		// e.g. ~li_: the temporary file marker, the shortest useful library name and the separator.
+		// Some toolchains store only the PDB file name (rustc passes `/PDBALTPATH:%_PDB%`),
+		// so the shortened name still has to be usable when the original path is short.
+		// The null terminator doesn't need room: it lands on the byte that terminated the original path.
+		const uint8_t min_base_size = 3;
 		int original_path_size = pdb_info.path.utf8().length();
 		CharString utf8_name = new_pdb_base_name.utf8();
 		int new_expected_buffer_size = utf8_name.length() + suffix_size;
@@ -181,7 +184,9 @@ Error WindowsUtils::copy_and_rename_pdb(const String &p_dll_path) {
 			new_pdb_base_name.clear();
 			new_pdb_base_name.append_utf8(utf8_name.get_data(), original_path_size - suffix_size);
 			new_pdb_base_name[new_pdb_base_name.length() - 1] = '_'; // Restore the last '_'
-			WARN_PRINT(vformat("The original path size of '%s' in bytes was too small to fit the new name, so it was shortened to '%s%d.pdb'.", pdb_info.path, new_pdb_base_name, max_pdb_names - 1));
+			// Shortening is expected when a library only stores the PDB file name,
+			// so report it once instead of on every load.
+			WARN_PRINT_ONCE(vformat("The original path size of '%s' in bytes was too small to fit the new name, so it was shortened to '%s%d.pdb'.", pdb_info.path, new_pdb_base_name, max_pdb_names - 1));
 		}
 	}
 
