@@ -3409,7 +3409,9 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 
 #ifdef DEBUG_ENABLED
 				if (ref.size() != 1 || ce.error != Callable::CallError::CALL_OK) {
-					err_text = vformat(R"(There was an error calling "_iter_next" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script_instance()->get_script()));
+					// `get_script()` is used instead of `get_script_instance()->get_script()`,
+					// since the object may have no script instance.
+					err_text = vformat(R"(There was an error calling "_iter_next" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script()));
 					OPCODE_BREAK;
 				}
 #endif
@@ -3424,7 +3426,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 					*iterator = obj->callp(CoreStringName(_iter_get), const_cast<const Variant **>(&state_ptr), 1, ce);
 #ifdef DEBUG_ENABLED
 					if (ce.error != Callable::CallError::CALL_OK) {
-						err_text = vformat(R"(There was an error calling "_iter_get" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script_instance()->get_script()));
+						err_text = vformat(R"(There was an error calling "_iter_get" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script()));
 						OPCODE_BREAK;
 					}
 #endif
@@ -3768,7 +3770,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 
 #ifdef DEBUG_ENABLED
 				if (VariantInternal::get_array(state)->size() != 1 || ce.error != Callable::CallError::CALL_OK) {
-					err_text = vformat(R"(There was an error calling "_iter_next" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script_instance()->get_script()));
+					err_text = vformat(R"(There was an error calling "_iter_next" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script()));
 					OPCODE_BREAK;
 				}
 #endif
@@ -3784,7 +3786,7 @@ Variant GDScriptFunction::call(GDScriptInstance *p_instance, const Variant **p_a
 					*iterator = obj->callp(CoreStringName(_iter_get), const_cast<const Variant **>(&state_ptr), 1, ce);
 #ifdef DEBUG_ENABLED
 					if (ce.error != Callable::CallError::CALL_OK) {
-						err_text = vformat(R"(There was an error calling "_iter_get" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script_instance()->get_script()));
+						err_text = vformat(R"(There was an error calling "_iter_get" on iterator object of type "%s".)", GDScript::debug_get_script_name(obj->get_script()));
 						OPCODE_BREAK;
 					}
 #endif
