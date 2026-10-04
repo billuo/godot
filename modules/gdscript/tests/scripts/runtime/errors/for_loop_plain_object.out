@@ -1,0 +1,2 @@
+GDTEST_RUNTIME_ERROR
+>> SCRIPT ERROR at runtime/errors/for_loop_plain_object.gd:4 on iterate(): There was an error calling "_iter_next" on iterator object of type "<unknown script>".
