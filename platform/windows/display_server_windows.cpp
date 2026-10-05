@@ -3734,13 +3734,15 @@ Error DisplayServerWindows::embed_process(DisplayServerEnums::WindowID p_window,
 	SetWindowPos(ep->window_handle, HWND_BOTTOM, adjusted_rect.position.x, adjusted_rect.position.y, adjusted_rect.size.x, adjusted_rect.size.y, SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
 
 	if (ep->is_visible != p_visible) {
-		if (p_visible) {
+		// Workaround for USER object leaking, the game shows its own window anyway.
+		if (p_visible && !ep->first_embed) {
 			ShowWindow(ep->window_handle, SW_SHOWNA);
-		} else {
+		} else if (!p_visible) {
 			ShowWindow(ep->window_handle, SW_HIDE);
 		}
 		ep->is_visible = p_visible;
 	}
+	ep->first_embed = false;
 
 	if (p_grab_focus) {
 		SetForegroundWindow(ep->window_handle);

@@ -547,6 +547,7 @@ class DisplayServerWindows : public DisplayServer {
 		HWND window_handle = nullptr;
 		HWND parent_window_handle = nullptr;
 		bool is_visible = false;
+		bool first_embed = true;
 	};
 	HashMap<ProcessID, EmbeddedProcessData *> embedded_processes;
 
